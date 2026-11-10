@@ -1,0 +1,106 @@
+.adv-tiles {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.adv-figure-row {
+  display: grid;
+  gap: 2px;
+}
+
+.adv-figure {
+  font: var(--type-figure-lg);
+  letter-spacing: var(--tracking-figure-lg);
+}
+
+.adv-figure-of {
+  color: var(--ink-muted);
+  font: var(--type-heading);
+  letter-spacing: 0;
+}
+
+.adv-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* It isn't money, so it isn't sky. */
+.adv-meter {
+  display: block;
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+}
+
+.adv-meter::-webkit-meter-bar {
+  height: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+}
+
+.adv-meter::-webkit-meter-optimum-value,
+.adv-meter::-webkit-meter-suboptimum-value,
+.adv-meter::-webkit-meter-even-less-good-value {
+  border-radius: var(--radius-pill);
+  background: var(--ink-muted);
+}
+
+.adv-meter::-moz-meter-bar {
+  border-radius: var(--radius-pill);
+  background: var(--ink-muted);
+}
+
+.adv-jobs {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.adv-jobs li {
+  display: grid;
+  gap: 0 var(--space-2);
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.adv-job-kind {
+  font-weight: 700;
+}
+
+.adv-jobs .adv-code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adv-jobs .adv-note {
+  grid-column: 2;
+}
+
+.adv-log th,
+.adv-log td {
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.adv-log tbody th {
+  font-weight: 500;
+}
+
+.adv-log-path {
+  max-width: 168px;
+}
+
+.adv-log-path .adv-code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

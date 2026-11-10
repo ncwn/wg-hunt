@@ -1,0 +1,33 @@
+# Lint, tests and build, on the commit that started the calling workflow.
+name: Checks
+on:
+  workflow_call:
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: pnpm/action-setup@v4.3.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+      - name: Start the built server
+        env:
+          WG_HUNT_DATA_DIR: ${{ runner.temp }}/wg-hunt-data
+        run: |
+          node apps/server/dist/main.mjs &
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8787/api/v1/health; then
+              # The built CLI reads the token from the data folder, as it does in the image.
+              node apps/cli/dist/wg-hunt.mjs offers list
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "built server did not answer /api/v1/health" >&2
+          exit 1

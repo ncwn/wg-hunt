@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "The same Advertiser posts the same room again with the same photos, uploaded again under new hashes, and the same text. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "duplicate",
+  "a": {
+    "page": "duplicate-repost-same-photos-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "duplicate-repost-same-photos-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

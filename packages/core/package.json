@@ -1,0 +1,20 @@
+{
+  "name": "@wg-hunt/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sources/wg-gesucht": "./src/sources/wg-gesucht/index.ts",
+    "./analysis/anthropic": "./src/analysis/anthropic.ts",
+    "./analysis/anthropic-batch": "./src/analysis/anthropic-batch.ts",
+    "./analysis/testing": "./src/analysis/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
+    "cheerio": "^1.2.0",
+    "zod": "^4.6.7"
+  }
+}

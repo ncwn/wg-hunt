@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Same Advertiser, same text, but another PLZ: not the same room. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "apart",
+  "a": {
+    "page": "apart-different-postal-code-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "apart-different-postal-code-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

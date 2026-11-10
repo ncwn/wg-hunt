@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "A company's re-post: only the photos it shares say it is one room. They were uploaded again, so their names match and their hashes do not. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "duplicate",
+  "a": {
+    "page": "duplicate-company-shared-photo-a.html",
+    "advertiser": {
+      "name": "Beispiel Co-Living GmbH",
+      "kind": "company"
+    }
+  },
+  "b": {
+    "page": "duplicate-company-shared-photo-b.html",
+    "advertiser": {
+      "name": "Beispiel Co-Living GmbH",
+      "kind": "company"
+    }
+  }
+}

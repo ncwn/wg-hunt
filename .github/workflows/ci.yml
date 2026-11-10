@@ -1,0 +1,17 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  check:
+    uses: ./.github/workflows/checks.yml
+  # The image as a release builds it, started on Linux, where the data folder's ownership is real
+  # (Docker Desktop on macOS hides it).
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 26
+      - run: scripts/smoke-container.sh

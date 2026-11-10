@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Same Advertiser and text, but a different flat size: another flat. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "apart",
+  "a": {
+    "page": "apart-different-flat-size-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "apart-different-flat-size-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

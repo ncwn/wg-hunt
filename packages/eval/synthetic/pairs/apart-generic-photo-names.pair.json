@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Two Advertisers whose photos only share generic names (image, 1), uploaded separately: not a Cloned offer. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "apart",
+  "a": {
+    "page": "apart-generic-photo-names-a.html",
+    "advertiser": {
+      "name": "Clara",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "apart-generic-photo-names-b.html",
+    "advertiser": {
+      "name": "David",
+      "kind": "private"
+    }
+  }
+}

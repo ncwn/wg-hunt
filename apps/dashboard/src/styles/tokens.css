@@ -1,0 +1,128 @@
+/*
+ * Values mirror docs/design-system/tokens.json, whose README says what each is for;
+ * test/tokens.test.ts checks their contrast. warned-solid is for alarm dots only and never sits
+ * behind text.
+ */
+:root {
+  color-scheme: light dark;
+
+  --font-sans:
+    "Manrope Variable", Manrope, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --type-display: 800 28px / 34px var(--font-sans);
+  --type-title: 700 20px / 26px var(--font-sans);
+  --type-heading: 700 16px / 22px var(--font-sans);
+  --type-figure-lg: 800 30px / 36px var(--font-sans);
+  --type-figure: 700 18px / 24px var(--font-sans);
+  --type-body: 500 14px / 20px var(--font-sans);
+  --type-body-strong: 700 14px / 20px var(--font-sans);
+  --type-label: 600 12px / 16px var(--font-sans);
+  --type-caption: 500 12px / 16px var(--font-sans);
+  --tracking-display: -0.02em;
+  --tracking-title: -0.01em;
+  --tracking-figure-lg: -0.02em;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
+
+  --canvas: #1a1b1f;
+  --surface: #ffffff;
+  --surface-sunken: #f3f5f9;
+  --line: #e5e9f0;
+  --line-strong: #878d99;
+  --ink: #15171c;
+  --ink-muted: #5a606c;
+  --ink-soft: #454a55;
+
+  /* Dark in both themes. */
+  --rail: #1a1b1f;
+  --rail-raised: #2b2d33;
+  --rail-ink: #a7abb5;
+  --rail-ink-strong: #ffffff;
+
+  /* The same in both themes. */
+  --brand: #f5e9c4;
+  --brand-ink: #15171c;
+
+  --sky: #2864a8;
+  --sky-soft: #d9e9fa;
+  --sky-bright: #bcdcf8;
+  --on-sky-bright: #15171c;
+
+  --lavender: #e6e0f6;
+  --mint: #d9f0de;
+  --butter: #f7efcd;
+  --rose: #fbe3df;
+
+  --match: #1c6e3f;
+  --near: #7f5300;
+  --warned: #ad2418;
+  --warned-solid: #c4322a;
+  --hidden: #5a606c;
+  --go: #2f9a5c;
+
+  --notice-info-line: #9eb9d8;
+  --notice-warn-line: #c5b28c;
+  --notice-alarm-line: #d28780;
+
+  --focus-ring: var(--sky);
+  --rail-focus-ring: #ffffff;
+  --link: var(--sky);
+
+  --shadow-card: 0 1px 2px rgba(21, 23, 28, 0.04);
+  --shadow-raised: 0 12px 32px rgba(21, 23, 28, 0.14);
+  --scrim: rgba(21, 23, 28, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #08090b;
+    --surface: #16181d;
+    --surface-sunken: #1e2127;
+    --line: #2a2e36;
+    --line-strong: #727886;
+    --ink: #eef0f4;
+    --ink-muted: #a3a9b5;
+    --ink-soft: #c3c8d2;
+
+    --rail: #08090b;
+    --rail-raised: #1d1f24;
+    --rail-ink: #a1a5af;
+    --rail-ink-strong: #ffffff;
+
+    --sky: #7fb5ec;
+    --sky-soft: #162538;
+
+    --lavender: #2a2443;
+    --mint: #18301f;
+    --butter: #332c14;
+    --rose: #3a1a17;
+
+    --match: #7fd6a0;
+    --near: #f0c460;
+    --warned: #ff9b90;
+    --warned-solid: #e5594d;
+    --hidden: #a3a9b5;
+    --go: #4cc07c;
+
+    --notice-info-line: #455f7a;
+    --notice-warn-line: #78653b;
+    --notice-alarm-line: #96605c;
+
+    --shadow-card: none;
+    --shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --scrim: rgba(0, 0, 0, 0.6);
+  }
+}

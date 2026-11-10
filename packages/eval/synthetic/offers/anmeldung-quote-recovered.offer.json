@@ -1,0 +1,71 @@
+{
+  "synthetic": true,
+  "note": "The first read quotes a paraphrase that is not in the text (Doubtful: quote not found). The escalation read quotes it exactly. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "possible",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": [
+    {
+      "anmeldung": {
+        "value": "possible",
+        "quote": "Du kannst dich hier anmelden",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      "requirements": [],
+      "minimumStay": {
+        "value": "unknown",
+        "months": 0,
+        "quote": "",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      "genderSoughtFromText": {
+        "value": "unknown",
+        "only": [],
+        "quote": "",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      "scamSignals": [],
+      "conflicts": []
+    },
+    {
+      "anmeldung": {
+        "value": "possible",
+        "quote": "Anmeldung ist möglich",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      "requirements": [],
+      "minimumStay": {
+        "value": "unknown",
+        "months": 0,
+        "quote": "",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      "genderSoughtFromText": {
+        "value": "unknown",
+        "only": [],
+        "quote": "",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      "scamSignals": [],
+      "conflicts": []
+    }
+  ]
+}

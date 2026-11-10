@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "note": "A 1-room flat let for a limited time: end date, Anmeldung and a minimum stay. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "one-room-flat",
+  "expected": {
+    "warmRent": {
+      "amount": 650,
+      "converted": false
+    },
+    "rentType": "limited",
+    "anmeldung": "possible",
+    "minimumStay": 3,
+    "scamSignals": [],
+    "conflicts": [],
+    "availableFrom": "2027-02-01",
+    "availableUntil": "2027-07-31"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "possible",
+      "quote": "Anmeldung möglich",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "stated",
+      "months": 3,
+      "quote": "Mindestmietdauer 3 Monate",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

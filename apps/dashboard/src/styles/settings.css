@@ -1,0 +1,418 @@
+/* Each one-column grid here is minmax(0, 1fr), so a wide table scrolls in its own box instead of widening the page. */
+.settings-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.settings-group {
+  padding: var(--space-5) var(--space-6) var(--space-2);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.settings-heading {
+  margin: 0 0 var(--space-1);
+  font: var(--type-heading);
+}
+
+.settings-times {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-muted);
+}
+
+.settings-times > .wh-field {
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-notices {
+  display: grid;
+  padding: var(--space-3) 0;
+  gap: var(--space-3);
+}
+
+.settings-notices:empty {
+  display: none;
+}
+
+.settings-advanced {
+  padding: var(--space-2) var(--space-6);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.settings-advanced > .wh-disclosure {
+  border-top: 0;
+}
+
+.settings-advanced > .wh-disclosure > .wh-disclosure-head .wh-disclosure-title {
+  font: var(--type-heading);
+}
+
+.spend-meter {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: 6px;
+  margin-top: var(--space-2);
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--sky-soft);
+}
+
+.spend-meter::-webkit-meter-bar {
+  height: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--sky-soft);
+}
+
+.spend-meter::-webkit-meter-optimum-value,
+.spend-meter::-webkit-meter-suboptimum-value,
+.spend-meter::-webkit-meter-even-less-good-value {
+  border-radius: var(--radius-pill);
+  background: var(--sky);
+}
+
+.spend-meter::-moz-meter-bar {
+  border-radius: var(--radius-pill);
+  background: var(--sky);
+}
+
+.spend-meter[data-tone="alarm"]::-webkit-meter-optimum-value,
+.spend-meter[data-tone="alarm"]::-webkit-meter-suboptimum-value,
+.spend-meter[data-tone="alarm"]::-webkit-meter-even-less-good-value {
+  background: var(--warned);
+}
+
+.spend-meter[data-tone="alarm"]::-moz-meter-bar {
+  background: var(--warned);
+}
+
+.advanced-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.adv-section {
+  display: grid;
+  padding: var(--space-6) 0;
+  align-content: start;
+  gap: var(--space-4);
+  border-top: 1px solid var(--line);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.adv-section:last-child {
+  padding-bottom: var(--space-2);
+}
+
+.adv-title {
+  margin: 0;
+  font: var(--type-heading);
+}
+
+.adv-note {
+  margin: 0;
+  color: var(--ink-muted);
+  font: var(--type-caption);
+}
+
+.adv-title + .adv-note {
+  margin-top: calc(-1 * var(--space-3));
+}
+
+.adv-label {
+  color: var(--ink-muted);
+  font: var(--type-label);
+}
+
+.adv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.adv-problem,
+.adv-form,
+.adv-rerun,
+.adv-pacing {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.adv-rerun:empty {
+  display: none;
+}
+
+.adv-section > .wh-setting,
+.adv-rows .wh-setting:first-child,
+.adv-rerun > .wh-setting,
+.adv-form > .wh-setting:first-child {
+  padding-top: 0;
+}
+
+.adv-fold > .wh-disclosure {
+  border-bottom: 1px solid var(--line);
+}
+
+.adv-fold > .wh-disclosure > .wh-disclosure-body:not([hidden]) {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.adv-fold + .adv-fold > .wh-disclosure {
+  border-top: 0;
+}
+
+.adv-tile {
+  display: grid;
+  min-width: 0;
+  padding: var(--space-4);
+  align-content: start;
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.adv-tile-title {
+  margin: 0;
+  font: var(--type-body-strong);
+}
+
+.adv-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.adv-list {
+  display: grid;
+  margin: 0;
+  padding-left: var(--space-4);
+  gap: var(--space-1);
+  font: var(--type-body);
+}
+
+.adv-group {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-2);
+  border: 0;
+}
+
+.adv-group > legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.adv-fields {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.adv-pair {
+  display: grid;
+  width: 100%;
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
+.adv-add {
+  padding-top: var(--space-2);
+}
+
+.adv-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+/* No hover, since the rows aren't links. */
+.adv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body);
+}
+
+.adv-table thead th {
+  padding: 0 var(--space-3) var(--space-2);
+  color: var(--ink-muted);
+  font: var(--type-label);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.adv-table tbody th,
+.adv-table td {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.adv-table tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.adv-table th:first-child,
+.adv-table td:first-child {
+  padding-left: 0;
+}
+
+.adv-table th:last-child,
+.adv-table td:last-child {
+  padding-right: 0;
+}
+
+.adv-table .adv-cell-num {
+  text-align: right;
+}
+
+.adv-cell-muted {
+  color: var(--ink-muted);
+}
+
+.adv-cell-end {
+  text-align: right;
+}
+
+.adv-price {
+  width: 104px;
+}
+
+.adv-price .wh-field-box {
+  height: 36px;
+  padding: 0 var(--space-3);
+}
+
+.adv-price .wh-field-input {
+  text-align: right;
+}
+
+.adv-secrets {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.adv-secret {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.adv-secret .wh-setting {
+  padding-top: 0;
+}
+
+.adv-secret-hint,
+.adv-token .wh-field-input {
+  font-family: var(--font-mono);
+}
+
+.adv-token .wh-field-box {
+  background: var(--surface-sunken);
+}
+
+.adv-readout {
+  display: grid;
+  margin: 0;
+  gap: var(--space-3) var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.adv-readout > div {
+  display: grid;
+  gap: 2px;
+}
+
+.adv-readout dt {
+  color: var(--ink-muted);
+  font: var(--type-label);
+}
+
+.adv-readout dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.adv-readout-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 640px) {
+  .settings-group,
+  .settings-advanced {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .adv-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adv-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .adv-readout:not(.adv-readout-wide) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adv-prices,
+  .adv-prices tbody {
+    display: block;
+  }
+
+  .adv-prices thead {
+    display: none;
+  }
+
+  .adv-prices tr {
+    display: grid;
+    padding: var(--space-3) 0;
+    align-items: center;
+    gap: var(--space-2);
+    border-top: 1px solid var(--line);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adv-prices tbody th,
+  .adv-prices td {
+    padding: 0;
+    border-top: 0;
+  }
+
+  .adv-prices tbody th,
+  .adv-prices td.adv-cell-muted {
+    grid-column: 1 / -1;
+  }
+
+  .adv-prices td.adv-cell-end {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .adv-prices .adv-price {
+    width: 100%;
+  }
+  .adv-actions > .wh-btn {
+    flex: 1;
+  }
+
+  .spend-meter {
+    max-width: none;
+  }
+}

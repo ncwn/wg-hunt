@@ -1,0 +1,45 @@
+{
+  "synthetic": true,
+  "note": "The field says the gender does not matter, the text says only women: the stricter reading wins. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": ["woman"],
+    "smoking": "not_wanted"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "only",
+      "only": ["woman"],
+      "quote": "suchen nur Frauen",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

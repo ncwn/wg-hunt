@@ -1,0 +1,21 @@
+{
+  "name": "@wg-hunt/cli",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "wg-hunt": "dist/wg-hunt.mjs"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p .",
+    "generate:api": "tsx scripts/generate-api.ts"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "openapi-fetch": "^0.17.0"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.1.6",
+    "@wg-hunt/api-codegen": "workspace:*"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "synthetic": true,
+  "note": "Scam signal: an identity document copy before any viewing. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": ["id_copy_upfront"],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [
+      {
+        "kind": "id_copy_upfront",
+        "quote": "Schick mir bitte vorab eine Kopie deines Personalausweises",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      }
+    ],
+    "conflicts": []
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "A company's co-living flat: same size, same template, no photo in common. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "sibling",
+  "a": {
+    "page": "sibling-company-same-template-a.html",
+    "advertiser": {
+      "name": "Beispiel Co-Living GmbH",
+      "kind": "company"
+    }
+  },
+  "b": {
+    "page": "sibling-company-same-template-b.html",
+    "advertiser": {
+      "name": "Beispiel Co-Living GmbH",
+      "kind": "company"
+    }
+  }
+}

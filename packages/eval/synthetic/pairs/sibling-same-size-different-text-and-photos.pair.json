@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Two rooms of one flat that happen to be the same size, but described and photographed differently. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "sibling",
+  "a": {
+    "page": "sibling-same-size-different-text-and-photos-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "sibling-same-size-different-text-and-photos-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@wg-hunt/eval",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@wg-hunt/core": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

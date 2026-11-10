@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "note": "Minimum stay in months, with the usual keyword. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": 6,
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "stated",
+      "months": 6,
+      "quote": "Mindestmietdauer 6 Monate",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

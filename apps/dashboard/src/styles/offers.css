@@ -1,0 +1,161 @@
+.offers-tools {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+}
+
+.offers-hidden {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.offers-list {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  justify-items: start;
+}
+
+.offers-list > .wh-table-wrap,
+.offers-list > .wh-notice {
+  justify-self: stretch;
+}
+
+/* The list scrolls, not the table wrapper, so the headers can stick. */
+.offers-list > .wh-table-wrap {
+  overflow: visible;
+}
+
+/*
+ * Flush to the list's top, over the padding the scroll edge keeps for focus rings; the hairline
+ * stands in for the first row's top border.
+ */
+.offers-list .wh-table thead th {
+  position: sticky;
+  z-index: 1;
+  top: calc(var(--space-1) * -1);
+  background: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+
+.offers-list .wh-table tbody tr:first-child td {
+  border-top-color: transparent;
+}
+
+.offers-quiet {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.offer-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.offer-panel-scrim {
+  display: none;
+}
+
+.offer-panel-bar {
+  display: flex;
+  position: absolute;
+  z-index: 1;
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+.offer-panel-close {
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.offer-panel-body {
+  min-height: 0;
+  padding: var(--space-4) var(--space-4) var(--space-6);
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.offer-panel .wh-offer {
+  max-width: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 1024px) {
+  html:has(.offer-panel:not(.is-closing)) {
+    overflow: hidden;
+  }
+
+  .offer-panel {
+    top: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    width: min(520px, calc(100vw - var(--space-4)));
+    border-radius: var(--radius-lg);
+  }
+
+  .offer-panel-scrim {
+    display: block;
+    position: fixed;
+    z-index: 30;
+    inset: 0;
+    background: var(--scrim);
+  }
+}
+
+@media (max-width: 640px) {
+  .offer-panel-scrim {
+    display: none;
+  }
+
+  .offer-panel {
+    top: var(--space-2);
+    right: var(--space-2);
+    bottom: calc(var(--bar-height) + env(safe-area-inset-bottom) + var(--space-2));
+    left: var(--space-2);
+    width: auto;
+  }
+
+  .offer-panel-close {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .offer-panel-scrim {
+    animation: offer-scrim-in 260ms ease-out;
+  }
+
+  .offer-panel-scrim.is-closing {
+    animation: offer-scrim-out 220ms ease-in forwards;
+  }
+}
+
+/* Without the fade, a closing panel's scrim just goes. */
+@media (prefers-reduced-motion: reduce) {
+  .offer-panel-scrim.is-closing {
+    visibility: hidden;
+  }
+}
+
+@keyframes offer-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes offer-scrim-out {
+  to {
+    opacity: 0;
+  }
+}

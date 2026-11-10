@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "note": "Negation: 'keine Anmeldung' must not be read as possible. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "not_possible",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "not_possible",
+      "quote": "Leider ist keine Anmeldung möglich",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

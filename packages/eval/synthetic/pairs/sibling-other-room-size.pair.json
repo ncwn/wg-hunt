@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Another room of the same flat, much smaller. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "sibling",
+  "a": {
+    "page": "sibling-other-room-size-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "sibling-other-room-size-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

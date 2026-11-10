@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "A re-post where the room size changed by a square metre. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "duplicate",
+  "a": {
+    "page": "duplicate-room-size-remeasured-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "duplicate-room-size-remeasured-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

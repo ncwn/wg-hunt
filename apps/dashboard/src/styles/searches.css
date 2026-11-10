@@ -1,0 +1,245 @@
+.searches {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.searches-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.searches-caption {
+  color: var(--ink-muted);
+  font: var(--type-caption);
+}
+
+.searches-problem {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+
+.searches-empty {
+  display: grid;
+  padding: var(--space-8) var(--space-6);
+  justify-items: center;
+  gap: var(--space-1);
+  background: var(--surface-sunken);
+  box-shadow: none;
+  text-align: center;
+}
+
+.searches-empty-title {
+  font: var(--type-heading);
+}
+
+.sc {
+  display: grid;
+  padding: var(--space-5) var(--space-6);
+  gap: var(--space-4);
+  background: var(--surface-sunken);
+  box-shadow: none;
+}
+
+.sc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.sc-text {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.sc-title {
+  font: var(--type-heading);
+}
+
+.sc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  color: var(--ink-muted);
+  font: var(--type-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-meta > span + span::before {
+  margin-right: var(--space-2);
+  content: "·";
+}
+
+.sc-off .sc-title {
+  color: var(--ink-muted);
+}
+
+.sc-switch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-muted);
+  font: var(--type-label);
+}
+
+.sc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sc-edit {
+  display: grid;
+  padding-top: var(--space-4);
+  gap: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.sf {
+  display: grid;
+  max-width: 720px;
+  gap: var(--space-5);
+}
+
+.sf-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sf-more {
+  display: grid;
+  padding-top: var(--space-3);
+  gap: var(--space-5);
+}
+
+.sf-range {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* A floated legend sits in the flow like a field's label, 6px above the boxes. */
+.sf-range > legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.sf-range > .wh-field-hint {
+  margin-top: 6px;
+}
+
+.sf-range-fields {
+  display: flex;
+  clear: both;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-muted);
+}
+
+.sf-range.has-error .wh-field-box {
+  border-color: var(--warned);
+}
+
+.sf-error {
+  color: var(--warned);
+}
+
+.sf-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.forecast-warnings {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .sc {
+    padding: var(--space-4);
+  }
+
+  .sc-head {
+    gap: var(--space-3);
+  }
+
+  .sc-actions > .wh-btn {
+    flex: 1 1 0;
+    padding: 0 var(--space-3);
+  }
+
+  .sf-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sf-actions > .wh-btn {
+    flex: 1;
+  }
+
+  .searches-empty {
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
+.forecast {
+  display: grid;
+  max-width: 640px;
+  gap: var(--space-3);
+}
+
+.forecast-title {
+  font: var(--type-heading);
+}
+
+.forecast-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.forecast-table th,
+.forecast-table td {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  text-align: right;
+}
+
+.forecast-table thead th {
+  border-top: 0;
+  color: var(--ink-muted);
+  font: var(--type-label);
+}
+
+.forecast-table th:first-child,
+.forecast-table td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.forecast-table tbody th {
+  font-weight: 500;
+}
+
+.forecast-table th:last-child,
+.forecast-table td:last-child {
+  padding-right: 0;
+}
+
+.forecast-changed {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.forecast-caption {
+  margin-top: var(--space-2);
+  color: var(--ink-muted);
+  font: var(--type-caption);
+}

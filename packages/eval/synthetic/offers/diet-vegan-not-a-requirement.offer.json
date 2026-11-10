@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "note": "'vegan' appears, but as a cookbook, not a rule for the tenant. The tripwire fires and the result stays Doubtful. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "synthetic": true,
+  "note": "A per-night rent on an Offer written in English; 'Anmeldung' is not in the text, so no tripwire helps the model. (Invented Offer; no real text.)",
+  "language": "en",
+  "category": "one-room-flat",
+  "expected": {
+    "warmRent": {
+      "amount": 1650,
+      "converted": true
+    },
+    "rentType": "overnight",
+    "anmeldung": "not_possible",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": []
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "not_possible",
+      "quote": "registering your address is not possible for stays this short",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

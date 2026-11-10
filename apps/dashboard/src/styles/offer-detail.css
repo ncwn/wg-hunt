@@ -1,0 +1,409 @@
+.od-page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.od-section,
+.od-stack,
+.od-block {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.od-block {
+  gap: var(--space-2);
+}
+
+.od-section > *,
+.od-stack > *,
+.od-block > * {
+  margin: 0;
+}
+
+.od-label {
+  margin: 0;
+  padding: 0;
+  color: var(--ink-muted);
+  font: var(--type-label);
+}
+
+.od-muted {
+  color: var(--ink-muted);
+}
+
+.od-strong {
+  font-weight: 700;
+}
+
+.od-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.od-actions > .wh-notice {
+  flex-basis: 100%;
+}
+
+.od-tools {
+  display: grid;
+  margin-top: calc(var(--space-2) * -1);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.od-tools > .wh-btn {
+  width: 100%;
+}
+
+.od-tools > .wh-notice {
+  grid-column: 1 / -1;
+}
+
+.od-asks {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.od-asks > .od-label {
+  margin: 0;
+}
+
+.od-folds {
+  display: grid;
+  container-type: inline-size;
+}
+
+.od-folds > .od-fold:last-child .wh-disclosure {
+  border-bottom: 1px solid var(--line);
+}
+
+.od-fold .wh-disclosure-head {
+  min-height: 48px;
+}
+
+/* Phone: the quieter actions are touch targets too. */
+@media (max-width: 640px) {
+  .od-tools > .wh-btn {
+    height: 44px;
+  }
+
+  .od-actions > .wh-btn {
+    min-height: 44px;
+  }
+}
+
+.od-quote {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.od-quote-label {
+  display: block;
+  color: var(--ink-muted);
+  font: var(--type-label);
+  font-style: normal;
+}
+
+.od-signals {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.od-signal {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.od-signal + .od-signal {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.od-signal .wh-chip {
+  justify-self: start;
+}
+
+.od-signal-text {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.od-signal-text p {
+  margin: 0;
+}
+
+.od-facts th,
+.od-facts td {
+  vertical-align: top;
+}
+
+.od-facts td,
+.od-facts tbody th {
+  padding: var(--space-3);
+  border-top: 1px solid var(--line);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.od-facts tbody th,
+.od-facts td:last-child {
+  overflow-wrap: normal;
+}
+
+.od-facts tbody th {
+  padding-left: 0;
+  color: var(--ink);
+  font: var(--type-body);
+  font-weight: 700;
+  text-align: left;
+}
+
+/* The rows don't open anything, so they don't light up on hover. */
+.od-facts tbody tr:hover td {
+  background: none;
+}
+
+.od-facts tbody tr.od-fact-manual th,
+.od-facts tbody tr.od-fact-manual td {
+  background: var(--sky-soft);
+}
+
+.od-fact-quote {
+  color: var(--ink-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.od-fact-note {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font: var(--type-caption);
+}
+
+.od-fact-doubtful {
+  color: var(--near);
+  font-weight: 600;
+}
+
+.od-fact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* Lined up with the first line of the row's text rather than below it. */
+.od-facts .od-fact-actions {
+  margin-top: -6px;
+}
+
+@container (max-width: 560px) {
+  .od-facts td,
+  .od-facts tbody th {
+    padding: var(--space-2);
+    font-size: 13px;
+  }
+
+  .od-facts th:first-child,
+  .od-facts tbody th {
+    padding-left: 0;
+  }
+
+  .od-facts td:last-child {
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .od-facts,
+  .od-facts tbody {
+    display: block;
+  }
+
+  .od-facts thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .od-facts tbody tr {
+    display: grid;
+    padding: var(--space-3) 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px var(--space-3);
+    border-top: 1px solid var(--line);
+  }
+
+  .od-facts tbody tr > * {
+    grid-column: 1;
+    padding: 0;
+    border-top: 0;
+    font-size: inherit;
+  }
+
+  .od-facts tbody tr > th {
+    font: var(--type-label);
+    color: var(--ink-muted);
+  }
+
+  .od-facts tbody tr > td:nth-child(2) {
+    font-weight: 700;
+  }
+
+  .od-facts tbody tr > td:nth-child(3) {
+    color: var(--ink-muted);
+    font: var(--type-caption);
+  }
+
+  .od-facts tbody tr > td:last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .od-facts .od-fact-actions {
+    margin-top: 0;
+  }
+
+  .od-facts .od-fact-actions .wh-btn {
+    height: 44px;
+  }
+
+  .od-facts tbody tr.od-fact-manual {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--sky-soft);
+  }
+
+  .od-facts tbody tr.od-fact-manual > * {
+    background: none;
+  }
+}
+
+.od-silent {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.od-silent li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
+.od-form {
+  display: grid;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+
+.od-form > * {
+  margin: 0;
+}
+
+.od-form-title {
+  margin: 0;
+  font: var(--type-heading);
+}
+
+.od-form p {
+  margin: 0;
+}
+
+.od-field-short {
+  max-width: 240px;
+}
+
+.od-field-grow {
+  flex: 1 1 12rem;
+}
+
+.od-checklist,
+.od-requirements {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-2);
+  border: 0;
+}
+
+.od-checklist legend,
+.od-requirements > legend {
+  margin-bottom: var(--space-2);
+}
+
+.od-checklist-item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.od-checklist-item .od-quote {
+  margin-left: calc(16px + var(--space-2));
+}
+
+.od-requirement {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.od-requirement > legend {
+  float: left;
+  width: 100%;
+}
+
+.od-requirement-remove {
+  margin-bottom: 6px;
+}
+
+.od-requirement > .od-quote {
+  flex-basis: 100%;
+}
+
+.od-range {
+  display: flex;
+  max-width: 360px;
+  gap: var(--space-3);
+}
+
+.od-range > * {
+  flex: 1;
+}

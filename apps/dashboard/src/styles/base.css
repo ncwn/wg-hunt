@@ -1,0 +1,110 @@
+/*
+ * Bare button and input styles are wrapped in :where() so they weigh nothing and a component's own
+ * class always wins.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font: var(--type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+h1 {
+  font: var(--type-display);
+  letter-spacing: var(--tracking-display);
+}
+
+h2 {
+  font: var(--type-title);
+  letter-spacing: var(--tracking-title);
+}
+
+h3 {
+  font: var(--type-heading);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--link);
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+
+/*
+ * The one focus ring. Containers on another ground (the rail, the dark status card) only redefine
+ * --focus-ring.
+ */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:where(button:not([class*="wh-"])) {
+  min-height: 32px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+:where(button:not([class*="wh-"]):hover:not(:disabled)) {
+  background: var(--surface-sunken);
+}
+
+:where(button:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+:where(input:not([class*="wh-"]), select:not([class*="wh-"]), textarea) {
+  width: 100%;
+  min-height: 36px;
+  padding: 4px var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+}
+
+:where(input[type="checkbox"], input[type="radio"]) {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--ink);
+}

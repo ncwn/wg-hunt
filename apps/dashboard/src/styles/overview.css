@@ -1,0 +1,417 @@
+.ov {
+  display: grid;
+  flex: 1 0 auto;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr) 300px;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "rent hunt hunt"
+    "new new status";
+  gap: var(--space-8);
+}
+
+/* Level with the table under its 44px heading row, and as tall as the table, so the row ends flush. */
+.ov-status {
+  display: flex;
+  grid-area: status;
+  flex-direction: column;
+  margin-top: calc(44px + var(--space-3));
+}
+
+.ov-status > .wh-statuscard {
+  flex: 1;
+}
+
+.ov-hunt {
+  grid-area: hunt;
+}
+
+.ov-new {
+  display: flex;
+  grid-area: new;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.ov-rent {
+  grid-area: rent;
+}
+
+.ov-hunt,
+.ov-rent {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Section headings sit in 44px rows (See all's touch target) so cards that share a row share their top edge. */
+.ov-sec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  margin-bottom: var(--space-3);
+}
+
+.ov-sec {
+  margin: 0;
+  font: var(--type-title);
+  letter-spacing: var(--tracking-title);
+}
+
+.ov-more {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--link);
+  font: var(--type-body-strong);
+  text-decoration: none;
+}
+
+.ov-more:hover {
+  text-decoration: underline;
+}
+
+.ov-stats {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/* At least about six rows; the rest are a scroll or "See all" away. */
+.ov-new-list {
+  flex: 1 1 0;
+  min-height: 348px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ov-empty {
+  margin: 0;
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+}
+
+.ov-problem {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+
+.wh-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-6);
+  min-height: 148px;
+  padding: var(--space-5);
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.wh-stat.is-link {
+  cursor: pointer;
+}
+
+.wh-stat-lavender {
+  background: var(--lavender);
+}
+
+.wh-stat-mint {
+  background: var(--mint);
+}
+
+.wh-stat-butter {
+  background: var(--butter);
+}
+
+.wh-stat-label {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.wh-stat-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.wh-stat-value {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: var(--tracking-figure-lg);
+  line-height: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wh-stat-note {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.wh-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--sky-soft);
+}
+
+.wh-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.wh-chart-figure {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: var(--tracking-figure-lg);
+  line-height: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wh-chart-label {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wh-chart-change {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wh-chart-plot {
+  position: relative;
+  flex: 1;
+  min-height: 96px;
+  margin-top: var(--space-5);
+}
+
+.wh-chart-scrub {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  cursor: crosshair;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.wh-chart-plot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wh-chart-area {
+  fill: var(--sky);
+  fill-opacity: 0.12;
+}
+
+.wh-chart-line {
+  fill: none;
+  stroke: var(--sky);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.wh-chart-guide {
+  position: absolute;
+  pointer-events: none;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px dashed var(--sky);
+  transform: translateX(-0.75px);
+}
+
+.wh-chart-point {
+  position: absolute;
+  pointer-events: none;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: var(--radius-pill);
+  background: var(--sky);
+  box-shadow: 0 0 0 3px var(--sky-soft);
+}
+
+.wh-chart-tip {
+  position: absolute;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--rail);
+  box-shadow: var(--shadow-raised);
+  color: var(--rail-ink-strong);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.wh-chart-tip-day {
+  margin-left: var(--space-2);
+  color: var(--rail-ink);
+  font-weight: 600;
+}
+
+.wh-chart-compact {
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.wh-chart-compact .wh-chart-head {
+  align-items: center;
+}
+
+.wh-chart-title {
+  margin: 0;
+  font: var(--type-body-strong);
+}
+
+.wh-chart-compact .wh-chart-plot {
+  flex: none;
+  min-height: 0;
+  height: 56px;
+  margin-top: var(--space-10);
+}
+
+.ov-rent .wh-chart {
+  flex: 1;
+}
+
+.ov-stats .wh-stat {
+  min-height: 0;
+}
+
+@media (max-width: 1024px) {
+  .ov {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "status status"
+      "rent hunt"
+      "new new";
+    flex: none;
+    grid-template-rows: none;
+    gap: var(--space-6);
+  }
+
+  /* Stacked, the page scrolls, so the list keeps its six rows. */
+  .ov-new-list {
+    flex: none;
+    min-height: 0;
+    max-height: 348px;
+  }
+
+  .ov-status {
+    margin-top: 0;
+  }
+
+  .ov-status > .wh-statuscard {
+    flex: none;
+  }
+
+  .ov-stats {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: 1fr;
+    gap: var(--space-2);
+  }
+
+  .ov-stats .wh-stat {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 56px;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .ov-stats .wh-stat-label {
+    color: var(--ink);
+    font: var(--type-body-strong);
+  }
+
+  .ov-stats .wh-stat-bottom {
+    flex-wrap: nowrap;
+    gap: var(--space-3);
+  }
+
+  .ov-stats .wh-stat-note {
+    order: -1;
+    font: var(--type-caption);
+    white-space: nowrap;
+  }
+
+  .ov-stats .wh-stat-value {
+    font: var(--type-figure);
+  }
+}
+
+@media (max-width: 640px) {
+  .ov {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "status"
+      "rent"
+      "hunt"
+      "new";
+  }
+
+  .ov-sec-row {
+    margin-bottom: var(--space-2);
+  }
+
+  .ov-stats {
+    grid-auto-rows: auto;
+  }
+
+  .wh-chart {
+    padding: var(--space-4);
+  }
+
+  .wh-chart-plot {
+    flex: none;
+    min-height: 0;
+    height: 72px;
+    margin-top: var(--space-4);
+  }
+
+  .wh-chart .wh-seg {
+    display: flex;
+  }
+
+  .wh-chart .wh-seg-item {
+    position: relative;
+    flex: 1;
+  }
+
+  /* A 44px touch target around the 36px item. */
+  .wh-chart .wh-seg-item::after {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 44px;
+    transform: translateY(-50%);
+    content: "";
+  }
+}

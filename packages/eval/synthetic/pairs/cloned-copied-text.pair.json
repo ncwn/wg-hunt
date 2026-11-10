@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Another Advertiser copies the text word for word, with their own photos. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "cloned",
+  "a": {
+    "page": "cloned-copied-text-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "cloned-copied-text-b.html",
+    "advertiser": {
+      "name": "Bob",
+      "kind": "private"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "synthetic": true,
+  "note": "A preference, not a rule: vegetarian, preferred. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [
+      {
+        "kind": "diet",
+        "strictness": "preferred",
+        "value": "vegetarian"
+      }
+    ],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [
+      {
+        "kind": "diet",
+        "strictness": "preferred",
+        "value": "vegetarian",
+        "quote": "Wir kochen meist vegetarisch und freuen uns über Mitbewohner, die das auch mögen",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      }
+    ],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "wg-hunt",
+  "version": "1.2.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@12.16.1",
+  "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @wg-hunt/server dev",
+    "dev:dashboard": "pnpm --filter @wg-hunt/dashboard dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "eval": "tsx packages/eval/src/cli.ts",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check . && knip && pnpm typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@types/node": "^26.6.6",
+    "knip": "6.43.0",
+    "tsdown": "0.23.4",
+    "tsx": "4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "5.1.0"
+  }
+}

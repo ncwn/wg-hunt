@@ -1,0 +1,51 @@
+{
+  "synthetic": true,
+  "note": "Scam signal: a deposit of four months' rent, consistent with the cost table. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 430,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": ["deposit_over_three_months"],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [
+      {
+        "kind": "deposit_over_three_months",
+        "quote": "Die Kaution beträgt vier Monatsmieten",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      }
+    ],
+    "conflicts": []
+  }
+}

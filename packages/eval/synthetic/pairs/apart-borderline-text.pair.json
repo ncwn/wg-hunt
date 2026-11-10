@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Same flat and size, half-alike text, no shared photo: too borderline to merge, so kept apart. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "apart",
+  "a": {
+    "page": "apart-borderline-text-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "apart-borderline-text-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

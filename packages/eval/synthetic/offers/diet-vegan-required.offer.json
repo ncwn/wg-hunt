@@ -1,0 +1,59 @@
+{
+  "synthetic": true,
+  "note": "A vegan flat. The 'Vegetarisch/Vegan' flatshare type in the WG-Details only describes the flat. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [
+      {
+        "kind": "diet",
+        "strictness": "required",
+        "value": "vegan"
+      }
+    ],
+    "genderSought": "any"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [
+      {
+        "kind": "diet",
+        "strictness": "required",
+        "value": "vegan",
+        "quote": "Unsere WG ist rein vegan",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      }
+    ],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

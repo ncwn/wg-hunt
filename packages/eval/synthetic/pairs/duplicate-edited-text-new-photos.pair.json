@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "A re-post with a few words changed and new photos: the text still gives it away. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "duplicate",
+  "a": {
+    "page": "duplicate-edited-text-new-photos-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "duplicate-edited-text-new-photos-b.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  }
+}

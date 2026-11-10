@@ -1,0 +1,76 @@
+{
+  "synthetic": true,
+  "note": "Occupation required, smoking only wished for; both with the WG-Details field for who is sought. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [
+      {
+        "kind": "occupation",
+        "strictness": "required",
+        "value": "student"
+      },
+      {
+        "kind": "smoking",
+        "strictness": "preferred",
+        "value": "non_smoker"
+      }
+    ],
+    "genderSought": ["woman"],
+    "ageSought": {
+      "min": 20,
+      "max": 30
+    }
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [
+      {
+        "kind": "occupation",
+        "strictness": "required",
+        "value": "student",
+        "quote": "Du musst Studentin sein",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      {
+        "kind": "smoking",
+        "strictness": "preferred",
+        "value": "non_smoker",
+        "quote": "wir wünschen uns eine Nichtraucherin",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      }
+    ],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

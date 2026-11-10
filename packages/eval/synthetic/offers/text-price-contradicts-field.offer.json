@@ -1,0 +1,52 @@
+{
+  "synthetic": true,
+  "note": "The text names a lower warm rent than the field. The field's value stays; the text goes in as an alternative and a conflict. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 520,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": ["warmRent"],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": [
+      {
+        "factKey": "warmRent",
+        "textValue": "450",
+        "quote": "Die Warmmiete beträgt nur 450 Euro",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Another Advertiser uploads one of the photos again: a new hash, the same name. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "cloned",
+  "a": {
+    "page": "cloned-shared-photo-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "cloned-shared-photo-b.html",
+    "advertiser": {
+      "name": "Bob",
+      "kind": "private"
+    }
+  }
+}

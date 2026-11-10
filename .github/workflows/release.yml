@@ -1,0 +1,90 @@
+name: Release image
+on:
+  push:
+    tags:
+      - "v*"
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 26
+      - name: Check the tag against the root package.json version
+        run: node scripts/check-release-tag.mjs "$GITHUB_REF_NAME"
+  # CI's checks, run here on the tagged commit: the tag is pushed together with main, so CI's own
+  # run of them has not finished, and may yet fail, when this workflow starts.
+  check:
+    uses: ./.github/workflows/checks.yml
+    permissions:
+      contents: read
+  image:
+    needs: [version, check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: docker/setup-qemu-action@v3.7.0
+      - uses: docker/setup-buildx-action@v3.12.0
+      - uses: docker/metadata-action@v5.10.0
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - uses: docker/build-push-action@v6.19.2
+        with:
+          context: .
+          load: true
+          tags: wg-hunt:smoke
+          cache-from: type=gha
+      - run: scripts/smoke-container.sh
+        env:
+          IMAGE_PREBUILT: "1"
+      - uses: docker/login-action@v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6.19.2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  # Creates the GitHub release, so only once the image is smoke-tested and pushed.
+  cli:
+    needs: [version, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: pnpm/action-setup@v4.3.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wg-hunt/cli build
+      - name: Check the file runs with plain Node, away from the repository
+        run: |
+          cp apps/cli/dist/wg-hunt.mjs "$RUNNER_TEMP/wg-hunt.mjs"
+          cd "$RUNNER_TEMP"
+          node wg-hunt.mjs --version
+      - name: Attach wg-hunt.mjs to the release
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" apps/cli/dist/wg-hunt.mjs --clobber

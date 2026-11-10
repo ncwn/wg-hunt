@@ -1,0 +1,63 @@
+{
+  "synthetic": true,
+  "note": "The classic: abroad, keys by post, money first, a price that is too good. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 250,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "unknown",
+    "minimumStay": "unknown",
+    "scamSignals": ["cannot_show_in_person", "keys_by_post", "money_before_viewing"],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "unknown",
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [
+      {
+        "kind": "cannot_show_in_person",
+        "quote": "kann das Zimmer nicht selbst zeigen",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      {
+        "kind": "keys_by_post",
+        "quote": "Den Schlüssel per Post schicke ich nach Zahlung",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      },
+      {
+        "kind": "money_before_viewing",
+        "quote": "Die Kaution überweist du bitte vorab per Western Union",
+        "ambiguous": false,
+        "ambiguityReason": ""
+      }
+    ],
+    "conflicts": []
+  }
+}

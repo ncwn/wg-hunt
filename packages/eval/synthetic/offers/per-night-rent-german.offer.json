@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "note": "A rent per night is converted to a month at 30 days; the stay is limited and cannot be registered. (Invented Offer; no real text.)",
+  "language": "de",
+  "category": "one-room-flat",
+  "expected": {
+    "warmRent": {
+      "amount": 2100,
+      "converted": true
+    },
+    "rentType": "overnight",
+    "anmeldung": "not_possible",
+    "minimumStay": "unknown",
+    "scamSignals": [],
+    "conflicts": [],
+    "availableFrom": "2026-12-20",
+    "availableUntil": "2026-12-27"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "not_possible",
+      "quote": "Eine Anmeldung ist bei Kurzzeitmiete nicht möglich",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "unknown",
+      "months": 0,
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

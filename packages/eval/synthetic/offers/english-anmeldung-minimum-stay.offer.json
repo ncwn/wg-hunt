@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "note": "An Offer written in English: Anmeldung and a minimum stay. (Invented Offer; no real text.)",
+  "language": "en",
+  "category": "flatshare-room",
+  "expected": {
+    "warmRent": {
+      "amount": 480,
+      "converted": false
+    },
+    "rentType": "unlimited",
+    "anmeldung": "possible",
+    "minimumStay": 3,
+    "scamSignals": [],
+    "conflicts": [],
+    "requirements": [],
+    "genderSought": "unknown"
+  },
+  "replay": {
+    "anmeldung": {
+      "value": "possible",
+      "quote": "You can register your address (Anmeldung) at the flat without problems",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "requirements": [],
+    "minimumStay": {
+      "value": "stated",
+      "months": 3,
+      "quote": "Minimum rental period is 3 months",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "genderSoughtFromText": {
+      "value": "unknown",
+      "only": [],
+      "quote": "",
+      "ambiguous": false,
+      "ambiguityReason": ""
+    },
+    "scamSignals": [],
+    "conflicts": []
+  }
+}

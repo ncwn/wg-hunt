@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "note": "Two Advertisers in one PLZ with nothing in common. (Invented pages; no real text.)",
+  "category": "flatshare-room",
+  "expected": "apart",
+  "a": {
+    "page": "apart-unrelated-advertisers-a.html",
+    "advertiser": {
+      "name": "Anna",
+      "kind": "private"
+    }
+  },
+  "b": {
+    "page": "apart-unrelated-advertisers-b.html",
+    "advertiser": {
+      "name": "Bob",
+      "kind": "private"
+    }
+  }
+}

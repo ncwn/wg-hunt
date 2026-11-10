@@ -1,0 +1,195 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1793731462130,
+      "tag": "0000_salty_living_mummy",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793732369845,
+      "tag": "0001_charming_lady_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793733353892,
+      "tag": "0002_flippant_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793734883878,
+      "tag": "0003_friendly_goblin_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793736859528,
+      "tag": "0004_left_viper",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793737652840,
+      "tag": "0005_chilly_zaladane",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793738442936,
+      "tag": "0006_striped_zzzax",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793738673787,
+      "tag": "0007_offer_analysis",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793739177192,
+      "tag": "0008_mute_skullbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793739447776,
+      "tag": "0009_little_joshua_kane",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793739906316,
+      "tag": "0010_scam_mark",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793740060984,
+      "tag": "0011_offer_marks",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1793740685541,
+      "tag": "0012_offer_fact_overrides",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1793741366920,
+      "tag": "0013_retention_clocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1793741591501,
+      "tag": "0014_analysis_batches",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1793984940178,
+      "tag": "0015_dashboard_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1794017169727,
+      "tag": "0016_offer_texts",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1794216992771,
+      "tag": "0017_sweep_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1794217041315,
+      "tag": "0018_offer_dismissed_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794217088930,
+      "tag": "0019_offer_tombstones",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1794217157795,
+      "tag": "0020_pair_pin_release",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1794217233441,
+      "tag": "0021_batch_end_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1794217511006,
+      "tag": "0022_run_outcome",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1794217928029,
+      "tag": "0023_dashboard_session_expiry",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1794257264541,
+      "tag": "0024_reanalyze_requested_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1794298294603,
+      "tag": "0025_correction_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1794325540434,
+      "tag": "0026_drop_unused_columns",
+      "breakpoints": true
+    }
+  ]
+}
