@@ -169,6 +169,22 @@ export function createBatchState(deps: {
     failed?: AnalysisErrorKind;
   }): void {
     atomically(() => {
+      // Twins a merge carried over each ask for the same escalation; one request reads the words.
+      const carried =
+        args.failed === undefined &&
+        db
+          .select({ id: analysisItems.id })
+          .from(analysisItems)
+          .where(
+            and(
+              eq(analysisItems.offerId, args.offerId),
+              eq(analysisItems.stage, args.stage),
+              eq(analysisItems.contentHash, args.contentHash),
+              inArray(analysisItems.state, WAITING),
+            ),
+          )
+          .get();
+      if (carried) return;
       const row = db
         .insert(analysisItems)
         .values({

@@ -160,6 +160,32 @@ describe("a merge while a batch reads the absorbed Offer's words", () => {
   });
 });
 
+describe("a merge of two Offers a batch is reading the same words for", () => {
+  it("escalates the words once, though both first passes ask for it", async () => {
+    const h = boot({ batchScript: [doubtful, doubtful, anmeldungOk] });
+    const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
+    // Posted twice with the same words, then split: two Offers a batch reads the same words for.
+    ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
+    const room = await idOf(h, 9000001);
+    const split = await h.json("POST", `/offers/${room}/split`, { adId: "9000002" });
+    expect(split.status).toBe(201);
+    await change(h, { batchOnly: true });
+    await setKey(h);
+    await h.runtime.analysis.idle();
+    const [first, second] = waiting(h);
+    expect([first?.state, second?.state]).toEqual(["submitted", "submitted"]);
+    expect(first?.contentHash).toBe(second?.contentHash);
+
+    await merge(h, room, split.body.id);
+    await endBatch(h);
+
+    expect(h.batch.submissions.map((batch) => batch.length)).toEqual([2, 1]);
+    await endBatch(h);
+    expect((await offerOf(h, room)).analysis.escalated).toBe(true);
+    expect(waiting(h)).toEqual([]);
+  });
+});
+
 describe("the waiting requests a survivor takes over", () => {
   function twoOffers() {
     const h = boot();
