@@ -392,7 +392,7 @@ describe("a merge while a realtime read is out", () => {
     expect(h.runtime.db.select().from(analysisItems).all()).toEqual([]);
   });
 
-  it("ends a click it took over with the escalation waiting on the survivor, and sends the words no more often", async () => {
+  it("stores a click's read on the Offer that took the click over, and sends the words no more often", async () => {
     const held = heldRealtime([anmeldungOk], 0);
     const h = boot({
       size: 1,
@@ -416,29 +416,86 @@ describe("a merge while a realtime read is out", () => {
     await held.out();
 
     await merge(h, room, other);
-    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 2, state: "submitted" }]);
+    expect(waiting(h)).toEqual([]);
     expect(h.runtime.offers.analysisJob(room)?.reanalyzeRequestedAt).not.toBe(null);
     h.clock.now += MINUTE;
     held.release();
     await h.runtime.analysis.idle();
-    expect((await offerOf(h, room)).analysis).toEqual(finished);
 
-    h.batch.complete("batch-3");
-    await poll(h);
     const stored = await offerOf(h, room);
-    expect(stored.analysis.escalated).toBe(true);
+    expect(stored.analysis.analyzedAt).not.toBe(finished.analyzedAt);
     expect(stored.analysisStatus.status).toBe("analyzed");
     expect(h.runtime.offers.analysisJob(room)?.reanalyzeRequestedAt).toBe(null);
     h.runtime.analysis.sweep();
     await h.runtime.analysis.idle();
     await poll(h);
-    const answers = h.batch.submissions.flat();
-    expect(held.realtime.requests.length + answers.filter((r) => !isEscalation(r)).length).toBe(3);
-    expect(answers.filter(isEscalation)).toHaveLength(1);
-    expect(usageRows(h, false)).toBe(1);
-    expect(usageRows(h, true)).toBe(3);
+    const firstPasses = h.batch.submissions.flat().filter((request) => !isEscalation(request));
+    expect(held.realtime.requests.length + firstPasses.length).toBe(3);
     expect(waiting(h)).toEqual([]);
   });
+
+  for (const result of ["final", "escalated"] as const) {
+    for (const [late, answer] of [
+      ["sure", anmeldungOk],
+      ["doubtful", doubtful],
+    ] as const) {
+      for (const survives of ["clicked", "inBatch"] as const) {
+        it(`withdraws a first pass sent before a click whose read is out: ${result} result, ${late} late answer, ${survives} survives`, async () => {
+          const firstPasses = result === "escalated" ? [doubtful, anmeldungOk] : [anmeldungOk];
+          const held = heldRealtime([anmeldungOk], 0);
+          const h = boot({
+            size: 1,
+            sameProviders: {
+              realtime: held.realtime,
+              batch: fakeBatchProvider([...firstPasses, answer]),
+            },
+          });
+          const { room: clicked, other: inBatch } = await postedTwice(h);
+          await change(h, { batchOnly: true });
+          await setKey(h);
+          await h.runtime.analysis.idle();
+          await poll(h);
+          h.batch.complete("batch-1");
+          await poll(h);
+          if (result === "escalated") {
+            h.batch.complete("batch-3");
+            await poll(h);
+          }
+          const before = (await offerOf(h, clicked)).analysis;
+          expect(before.escalated).toBe(result === "escalated");
+          expect(waiting(h)).toMatchObject([{ offerId: inBatch, stage: 1, state: "submitted" }]);
+          await click(h, clicked);
+          await held.out();
+          const [survivor, absorbed] =
+            survives === "clicked" ? [clicked, inBatch] : [inBatch, clicked];
+
+          await merge(h, survivor, absorbed);
+
+          expect(waiting(h)).toEqual([]);
+          h.clock.now += MINUTE;
+          held.release();
+          await h.runtime.analysis.idle();
+          const stored = (await offerOf(h, survivor)).analysis;
+          expect(stored.analyzedAt).not.toBe(before.analyzedAt);
+          expect(stored.escalated).toBe(false);
+          expect(h.runtime.offers.analysisJob(survivor)?.reanalyzeRequestedAt).toBe(null);
+          h.batch.complete("batch-2");
+          await poll(h);
+          h.runtime.analysis.sweep();
+          await h.runtime.analysis.idle();
+          await poll(h);
+
+          expect((await offerOf(h, survivor)).analysis).toEqual(stored);
+          const answers = h.batch.submissions.flat();
+          expect(answers.filter(isEscalation)).toHaveLength(result === "escalated" ? 1 : 0);
+          expect(held.realtime.requests).toHaveLength(1);
+          expect(usageRows(h, false)).toBe(1);
+          expect(usageRows(h, true)).toBe(answers.length);
+          expect(waiting(h)).toEqual([]);
+        });
+      }
+    }
+  }
 
   it("stores the absorbed Offer's answer on a survivor that had read nothing", async () => {
     const held = heldRealtime([anmeldungOk], 0);
