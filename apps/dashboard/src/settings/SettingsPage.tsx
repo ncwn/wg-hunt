@@ -72,7 +72,8 @@ export function SettingsPage({
   );
 
   // Quiet hours and pace both PUT the whole crawl settings, so their saves run one at a time, each
-  // made to what the one before saved: a quick second change can't undo the first.
+  // made to what the one before saved: a quick second change can't undo the first. The read after
+  // a pacing save waits its turn too, or an older copy could land over a later save.
   const latestCrawl = useRef<Doc<StoredCrawl> | undefined>(undefined);
   useEffect(() => {
     latestCrawl.current = crawl.value;
@@ -200,7 +201,15 @@ export function SettingsPage({
               api={api}
               events={events}
               refresh={pacingVersion}
-              onSaved={() => void reloadCrawl(api, crawl.replace)}
+              onSaved={() => {
+                crawlSaves.current = crawlSaves.current.then(async () => {
+                  const fresh = await readDoc(() => getCrawl(api));
+                  // On a failure the editor keeps what it saved; this copy catches up at the next load.
+                  if (!fresh.ok) return;
+                  latestCrawl.current = fresh.data;
+                  crawl.replace(fresh.data);
+                });
+              }}
             />
             {model.value ? (
               <AnalysisSection api={api} stored={model.value} onSaved={model.replace} />
@@ -253,12 +262,6 @@ function SignOut({ onSignOut }: { onSignOut: () => void }) {
       )}
     </>
   );
-}
-
-async function reloadCrawl(api: ApiClient, replace: (value: Doc<StoredCrawl>) => void) {
-  const fresh = await readDoc(() => getCrawl(api));
-  // On a failure the editor keeps what it saved; this copy catches up at the next load.
-  if (fresh.ok) replace(fresh.data);
 }
 
 function QuietHours({

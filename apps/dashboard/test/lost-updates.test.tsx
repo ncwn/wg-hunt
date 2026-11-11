@@ -501,6 +501,60 @@ describe("Settings › Advanced: drafts survive saves made around them", () => {
     expect(region.queryByRole("button", { name: "Save pacing" })).toBeNull();
   });
 
+  it("keeps the pace picked after a pacing save when the read after that save answers last", async () => {
+    const server = realServer({ signedIn: true });
+    await server.ready;
+    let puts = 0;
+    let holding = false;
+    let held = 0;
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fetch = async (request: Request) => {
+      const isCrawl = new URL(request.url).pathname.endsWith("/settings/crawl");
+      if (isCrawl && request.method === "PUT") {
+        puts += 1;
+        const response = await server.fetch(request);
+        if (puts === 1) holding = true;
+        return response;
+      }
+      if (isCrawl && request.method === "GET" && holding) {
+        held += 1;
+        const response = await server.fetch(request);
+        await gate;
+        return response;
+      }
+      return server.fetch(request);
+    };
+    const { user } = renderDashboard(fetch, "/settings");
+    await openAdvanced(user);
+    await openFold(user, "Pacing");
+    const region = within(await screen.findByRole("region", { name: "Pacing" }));
+    const daily = (await region.findByLabelText("Most requests a day")) as HTMLInputElement;
+    await user.clear(daily);
+    await user.type(daily, "200");
+    await user.click(region.getByRole("button", { name: "Save pacing" }));
+    await waitFor(() => expect(held).toBe(1));
+    holding = false;
+
+    const gently = screen.getByRole("button", { name: "Gently" }) as HTMLButtonElement;
+    await user.click(gently);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    release();
+
+    await waitFor(async () =>
+      expect((await stored(server, "/settings/crawl")).pacing).toMatchObject({
+        gapMinSeconds: 30,
+        hourlyCap: 15,
+        dailyCap: 150,
+      }),
+    );
+    await waitFor(() => expect(gently.disabled).toBe(false));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(gently.getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("keeps the reading-model fields changed while the save was on its way", async () => {
     const server = realServer({ signedIn: true });
     await server.ready;
