@@ -1,5 +1,5 @@
-import type { AnalysisProvider } from "@wg-hunt/core";
-import { fakeBatchProvider, fakeProvider, type Scripted } from "@wg-hunt/core/analysis/testing";
+import type { AnalysisProvider, BatchRequest } from "@wg-hunt/core";
+import { fakeBatchProvider, fakeProvider } from "@wg-hunt/core/analysis/testing";
 import { describe, expect, it } from "vitest";
 import { carryWaiting } from "../src/analysis/batch-state.js";
 import { analysisItems, analysisUsage, offers } from "../src/db/schema.js";
@@ -161,23 +161,38 @@ describe("a merge while a batch reads the absorbed Offer's words", () => {
   });
 });
 
-/** Posted twice with the same words, then split: two Offers a batch reads the same words for. */
-async function twins(batchScript: Scripted[], size = 100) {
+type BatchScript = NonNullable<NonNullable<Parameters<typeof boot>[0]>["batchScript"]>;
+
+/** Posted with the same words, then split: Offers a batch reads the same words for. */
+async function sameWords(count: number, batchScript: BatchScript, size = 100) {
   const h = boot({ batchScript, size });
   const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
-  ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
+  const adIds = Array.from({ length: count }, (_, index) => 9000001 + index);
+  ingestStored(h, ...adIds.map((adId) => ({ adId, ...words })));
   const room = await idOf(h, 9000001);
-  const split = await h.json("POST", `/offers/${room}/split`, { adId: "9000002" });
-  expect(split.status).toBe(201);
+  const ids = [room];
+  for (const adId of adIds.slice(1)) {
+    const split = await h.json("POST", `/offers/${room}/split`, { adId: String(adId) });
+    expect(split.status).toBe(201);
+    ids.push(split.body.id as number);
+  }
   await change(h, { batchOnly: true });
   await setKey(h);
   await h.runtime.analysis.idle();
-  return { h, room, other: split.body.id as number };
+  return { h, ids };
 }
+
+const billedBatchAnswers = (h: Boot) =>
+  h.runtime.db
+    .select()
+    .from(analysisUsage)
+    .all()
+    .filter((row) => row.batch).length;
 
 describe("a merge of two Offers a batch is reading the same words for", () => {
   it("escalates the words once, though both first passes ask for it", async () => {
-    const { h, room, other } = await twins([doubtful, doubtful, anmeldungOk]);
+    const { h, ids } = await sameWords(2, [doubtful, doubtful, anmeldungOk]);
+    const [room, other] = ids as [number, number];
     expect(waiting(h)).toMatchObject([{ state: "submitted" }, { state: "submitted" }]);
 
     await merge(h, room, other);
@@ -191,33 +206,129 @@ describe("a merge of two Offers a batch is reading the same words for", () => {
 });
 
 describe("a merge of two Offers whose same words are in two batches", () => {
-  for (const [late, answer] of [
-    ["is sure", anmeldungOk],
-    ["asks for an escalation", doubtful],
-  ] as const) {
-    it(`keeps the escalated result when the other first pass ends late and ${late}`, async () => {
-      const { h, room, other } = await twins([doubtful, anmeldungOk, answer, anmeldungOk], 1);
-      await merge(h, room, other);
-      await poll(h);
-      h.batch.complete("batch-1");
-      await poll(h);
-      h.batch.complete("batch-3");
-      await poll(h);
-      expect((await offerOf(h, room)).analysis.escalated).toBe(true);
+  for (const merged of ["before either answer", "after the first one's escalation"] as const) {
+    for (const [late, answer] of [
+      ["is sure", anmeldungOk],
+      ["asks for an escalation", doubtful],
+    ] as const) {
+      it(`keeps the escalated result: merged ${merged}, the other first pass ends late and ${late}`, async () => {
+        const { h, ids } = await sameWords(2, [doubtful, anmeldungOk, answer, anmeldungOk], 1);
+        const [room, other] = ids as [number, number];
+        if (merged === "before either answer") await merge(h, room, other);
+        await poll(h);
+        h.batch.complete("batch-1");
+        await poll(h);
+        h.batch.complete("batch-3");
+        await poll(h);
+        if (merged !== "before either answer") await merge(h, room, other);
+        expect((await offerOf(h, room)).analysis.escalated).toBe(true);
 
-      h.batch.complete("batch-2");
-      await poll(h);
+        h.batch.complete("batch-2");
+        await poll(h);
 
-      const end = await offerOf(h, room);
-      expect(end.analysis.escalated).toBe(true);
-      expect(end.analysisStatus.status).toBe("analyzed");
-      expect(h.batch.submissions).toHaveLength(3);
-      expect(waiting(h)).toEqual([]);
-      // The late answer was billed all the same.
-      const billed = h.runtime.db.select().from(analysisUsage).all();
-      expect(billed.filter((row) => row.batch)).toHaveLength(3);
-    });
+        const end = await offerOf(h, room);
+        expect(end.analysis.escalated).toBe(true);
+        expect(end.analysisStatus.status).toBe("analyzed");
+        expect(h.batch.submissions).toHaveLength(3);
+        expect(waiting(h)).toEqual([]);
+        // The late answer was billed all the same.
+        expect(billedBatchAnswers(h)).toBe(3);
+      });
+    }
   }
+});
+
+function orders<T>(events: T[]): T[][] {
+  if (events.length <= 1) return [events];
+  return events.flatMap((event, index) =>
+    orders([...events.slice(0, index), ...events.slice(index + 1)]).map((rest) => [event, ...rest]),
+  );
+}
+
+describe("three Offers a batch each reads the same words for, two merged into the first", () => {
+  const isEscalation = (request: BatchRequest) => request.request.effort === "high";
+  const EVENTS = ["batch-1", "batch-2", "batch-3", "merge second", "merge third"] as const;
+  const absorbedFirst = (order: readonly string[], batch: string, merged: string) =>
+    order.indexOf(merged) < order.indexOf(batch);
+
+  /**
+   * What each order gives without any request carried over: an answer counts only when its Offer
+   * still exists. The first Offer's first pass always asks for an escalation.
+   */
+  async function outcomeOf(order: readonly (typeof EVENTS)[number][], others: "doubtful" | "sure") {
+    const { h, ids } = await sameWords(
+      3,
+      (_call, request) => {
+        if (isEscalation(request)) return anmeldungOk;
+        return others === "doubtful" || request.customId.startsWith("b1-") ? doubtful : anmeldungOk;
+      },
+      1,
+    );
+    const [first, second, third] = ids as [number, number, number];
+    const ended = new Set<string>();
+    const end = async (id: string) => {
+      ended.add(id);
+      h.batch.complete(id);
+      await poll(h);
+    };
+    let escalated = false;
+    let lost = false;
+    for (const event of order) {
+      if (event === "merge second") await merge(h, first, second);
+      else if (event === "merge third") await merge(h, first, third);
+      else await end(event);
+      for (const id of h.batch.batchIds().slice(3)) if (!ended.has(id)) await end(id);
+      const now = (await offerOf(h, first)).analysis?.escalated === true;
+      lost ||= escalated && !now;
+      escalated ||= now;
+    }
+    const answers = h.batch.submissions.flat();
+    const outcome = {
+      escalated: (await offerOf(h, first)).analysis?.escalated === true,
+      lost,
+      escalations: answers.filter(isEscalation).length,
+      waiting: waiting(h).length,
+      unbilled: answers.length - billedBatchAnswers(h),
+    };
+    h.runtime.close();
+    return outcome;
+  }
+
+  it("escalates no more than without the merge, whenever the answers come", async () => {
+    const wrong: unknown[] = [];
+    for (const order of orders([...EVENTS])) {
+      const late = [
+        absorbedFirst(order, "batch-2", "merge second"),
+        absorbedFirst(order, "batch-3", "merge third"),
+      ];
+      const wanted = {
+        escalated: true,
+        lost: false,
+        escalations: 1 + late.filter((absorbed) => !absorbed).length,
+        waiting: 0,
+        unbilled: 0,
+      };
+      const outcome = await outcomeOf(order, "doubtful");
+      if (JSON.stringify(outcome) !== JSON.stringify(wanted)) wrong.push({ order, outcome });
+    }
+    expect(wrong).toEqual([]);
+  }, 120_000);
+
+  it("keeps the escalated result when the absorbed Offers' answers come late and are sure", async () => {
+    const wrong: unknown[] = [];
+    const lateAnswers = orders([...EVENTS]).filter(
+      (order) =>
+        absorbedFirst(order, "batch-2", "merge second") &&
+        absorbedFirst(order, "batch-3", "merge third"),
+    );
+    expect(lateAnswers).toHaveLength(30);
+    for (const order of lateAnswers) {
+      const outcome = await outcomeOf(order, "sure");
+      const wanted = { escalated: true, lost: false, escalations: 1, waiting: 0, unbilled: 0 };
+      if (JSON.stringify(outcome) !== JSON.stringify(wanted)) wrong.push({ order, outcome });
+    }
+    expect(wrong).toEqual([]);
+  }, 120_000);
 });
 
 describe("a merge while a batch reads words the survivor does not show", () => {

@@ -1791,7 +1791,19 @@ export function createOffers(deps: {
         set: { mergedInto: survivorId },
       })
       .run();
-    carryWaiting(db, absorbedId, survivorId, current.contentHash);
+    const readOf = (row: Pick<OfferRow, "analysisState" | "analysis">): 0 | 1 | 2 => {
+      const stored = parseStoredAnalysis(row.analysis);
+      if (row.analysisState !== "analyzed" || stored.run?.contentHash !== current.contentHash) {
+        return 0;
+      }
+      return stored.escalation === undefined ? 2 : 1;
+    };
+    // A request is the next step from what its Offer had read: a first read, the escalation of a
+    // first pass, or another read after a click or in a run. Answered on an Offer that has read
+    // further, it would overwrite the newer result or ask for a second escalation.
+    if (readOf(merged) <= readOf(absorbed)) {
+      carryWaiting(db, absorbedId, survivorId, current.contentHash);
+    }
     db.delete(offers).where(eq(offers.id, absorbedId)).run();
   }
 

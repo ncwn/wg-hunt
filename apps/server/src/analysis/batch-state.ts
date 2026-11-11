@@ -21,7 +21,12 @@ export type ItemMove =
   | { to: "failed"; kind: AnalysisErrorKind }
   | { to: "capped" }
   | { to: "dropped" }
-  | { to: "discarded" };
+  | { to: "discarded" }
+  /**
+   * After a merge another request reads the same words. One already sent is still billed: its
+   * answer finds no item and is priced from what its batch row remembers.
+   */
+  | { to: "withdrawn" };
 
 export type BatchMove =
   | { to: "in_progress"; providerBatchId: string }
@@ -39,7 +44,16 @@ const ITEM_FROM: Record<ItemMove["to"], readonly AnalysisItemState[]> = {
   capped: ["queued", "submitted"],
   dropped: ["queued", "submitted"],
   discarded: ["queued"],
+  withdrawn: ["queued", "submitted"],
 };
+
+type Removal = Extract<ItemMove["to"], "discarded" | "withdrawn">;
+
+const removeItem = (db: Db, id: number, move: Removal): boolean =>
+  db
+    .delete(analysisItems)
+    .where(and(eq(analysisItems.id, id), inArray(analysisItems.state, [...ITEM_FROM[move]])))
+    .run().changes > 0;
 
 const BATCH_FROM: Record<
   Exclude<BatchMove["to"], "ended"> | BatchEndReason,
@@ -59,7 +73,8 @@ export const SETTLED: readonly AnalysisItemState[] = ["applied", "failed", "capp
 /**
  * Runs in the merge's transaction, before the absorbed Offer's row goes and takes its other items
  * along. `words`: the merged Offer's `contentHash`. A request for other words stays behind: on the
- * survivor it would hold the Offer until its batch ends, only to be dropped.
+ * survivor it would hold the Offer until its batch ends, only to be dropped. The caller decides
+ * whether the merged Offer still has a use for the requests at all.
  */
 export function carryWaiting(
   db: Db,
@@ -95,9 +110,9 @@ export function carryWaiting(
       carried.add(item.contentHash);
       continue;
     }
-    // Both Offers were waiting on these words. A second answer would overwrite a newer result or
-    // ask for a second escalation; one already sent is still priced, as an orphan of its batch.
-    db.delete(analysisItems).where(eq(analysisItems.id, item.id)).run();
+    // Both Offers were waiting on these words, and a second answer would overwrite a newer result
+    // or ask for a second escalation.
+    removeItem(db, item.id, "withdrawn");
   }
 }
 
@@ -122,7 +137,7 @@ export function createBatchState(deps: {
   // Nested inside another transaction, this is a savepoint.
   const atomically = <T>(fn: () => T): T => db.$client.transaction(fn)();
 
-  function patchOf(move: Exclude<ItemMove, { to: "discarded" }>) {
+  function patchOf(move: Exclude<ItemMove, { to: Removal }>) {
     switch (move.to) {
       case "submitted":
         return { state: "submitted" as const, batchId: move.batchId };
@@ -152,13 +167,18 @@ export function createBatchState(deps: {
 
   function moveItem(item: Pick<AnalysisItemRow, "id" | "offerId">, move: ItemMove): boolean {
     return atomically(() => {
-      const where = and(
-        eq(analysisItems.id, item.id),
-        inArray(analysisItems.state, [...ITEM_FROM[move.to]]),
-      );
-      if (move.to === "discarded") return db.delete(analysisItems).where(where).run().changes > 0;
+      if (move.to === "discarded" || move.to === "withdrawn") {
+        return removeItem(db, item.id, move.to);
+      }
       const patch = patchOf(move);
-      const moved = db.update(analysisItems).set(patch).where(where).returning().get();
+      const moved = db
+        .update(analysisItems)
+        .set(patch)
+        .where(
+          and(eq(analysisItems.id, item.id), inArray(analysisItems.state, [...ITEM_FROM[move.to]])),
+        )
+        .returning()
+        .get();
       if (moved === undefined) return false;
       if (patch.state === "failed" && move.to === "failed") {
         offers.failAnalysis(item.offerId, move.kind);
