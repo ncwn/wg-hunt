@@ -46,6 +46,17 @@ export type Analysis = ReturnType<typeof createAnalysis>;
 export type AnalysisOverview = ReturnType<Analysis["status"]>;
 
 /**
+ * Where the realtime worker has an Offer; one it holds nothing of has no entry.
+ * - `queued`: in `queue`.
+ * - `taken`: off the queue, and nothing has been sent for it.
+ * - `reading`: its call is out.
+ * - `unstored`: its call went out and its outcome could not be stored: the database took no write
+ *   (a full disk). The call was billed, and no spend was recorded for the cap to hold, so this
+ *   process sends it again only after a new click. A restart tries once more too.
+ */
+type Phase = "queued" | "taken" | "reading" | "unstored";
+
+/**
  * The API key is read per Offer and never printed; errors reach the log and the database as a
  * kind only.
  */
@@ -69,20 +80,17 @@ export function createAnalysis(deps: {
   const isNew = (job: Pick<AnalysisJob, "lastBumpAt">): boolean =>
     job.lastBumpAt === null || clock() - job.lastBumpAt <= newOfferAgeMs;
   const queue: number[] = [];
-  const queued = new Set<number>();
-  /**
-   * Offers whose call went out and whose outcome could not be stored: the database took no write
-   * (a full disk). The call was billed, and no spend was recorded for the cap to hold, so this
-   * process sends none of them again by itself. A restart or a new click tries once more.
-   */
-  const unstored = new Set<number>();
+  const phases = new Map<number, Phase>();
+  const inFlight = (id: number): boolean => {
+    const phase = phases.get(id);
+    return phase === "taken" || phase === "reading";
+  };
   /**
    * What is left of the cap paid for neither of these Offers' calls when the worker last looked.
-   * Kept only to say so: every cycle still looks again with the numbers of the moment.
+   * Kept only to say so: every cycle still looks again with the numbers of the moment. Beside the
+   * phase, because such an Offer is queued again each cycle.
    */
   const noRoom = new Set<number>();
-  let inFlight: number | undefined;
-  let reading: number | undefined;
   let running: Promise<void> | undefined;
   let stopped = false;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -99,7 +107,7 @@ export function createAnalysis(deps: {
     events,
     clock,
     keyOf,
-    realtimeHeld: () => [...(inFlight === undefined ? [] : [inFlight]), ...offers.owedReanalyses()],
+    realtimeHeld: () => [...[...phases.keys()].filter(inFlight), ...offers.owedReanalyses()],
     announce: (offerIds) => announceAll(offerIds),
     statusChanged: () => syncStatus(),
     providerFor: options.batchProviderFor ?? ((apiKey) => createAnthropicBatchProvider({ apiKey })),
@@ -107,7 +115,8 @@ export function createAnalysis(deps: {
   });
 
   offers.attachAnalysis({
-    reading: () => reading,
+    reading: (offerId) => phases.get(offerId) === "reading",
+    unstored: (offerId) => phases.get(offerId) === "unstored",
     cap: () => {
       const { state, resetsAt } = spend.capState();
       return { state, resetsAt };
@@ -155,7 +164,7 @@ export function createAnalysis(deps: {
 
   function fail(job: AnalysisJob, kind: string): void {
     offers.failAnalysis(job.id, kind);
-    unstored.delete(job.id);
+    phases.set(job.id, "taken");
     // The kind is all that is ever logged: never a message, a key or any Offer text.
     console.error(`Analysis of Offer ${job.id} failed: ${kind}`);
     announce(job.id);
@@ -205,10 +214,8 @@ export function createAnalysis(deps: {
       return "skipped";
     }
 
-    reading = id;
+    phases.set(id, "reading");
     announce(id);
-    // Until its outcome is stored: an error that leaves this function leaves the Offer in the set.
-    unstored.add(id);
     try {
       const response = await callWithRetry(
         providerOf(apiKey),
@@ -247,17 +254,18 @@ export function createAnalysis(deps: {
         }
         batch.kick();
       }
-      unstored.delete(id);
-      reading = undefined;
+      phases.set(id, "taken");
       announce(id);
       return "done";
     } catch (error) {
-      reading = undefined;
+      // Its call went out and nothing is stored yet: an error that leaves this function from
+      // here on leaves the Offer `unstored`.
+      if (phases.get(id) === "reading") phases.set(id, "unstored");
       const kind = error instanceof ProviderError ? error.kind : "server_error";
       const policy = ERROR_KINDS[kind];
       if (policy.perOffer === "not-a-failure") {
         // Nothing was sent, so there is nothing to store; a click on it stays owed.
-        unstored.delete(id);
+        phases.set(id, "taken");
         if (kind === "spend_cap_reached") noRoom.add(id);
         announce(id);
       } else {
@@ -303,8 +311,7 @@ export function createAnalysis(deps: {
     while (!stopped) {
       const id = queue.shift();
       if (id === undefined) return;
-      queued.delete(id);
-      inFlight = id;
+      phases.set(id, "taken");
       try {
         const job = offers.analysisJob(id);
         if (job === undefined) continue;
@@ -315,28 +322,29 @@ export function createAnalysis(deps: {
         if (outcome === "key-refused" || outcome === "cap") {
           // A refused key has answered this Offer, a click on it included: `unauthorized` is
           // recorded on it. The clicks behind it are still owed.
-          queue.length = 0;
-          queued.clear();
+          for (const waiting of queue.splice(0)) phases.delete(waiting);
         }
       } catch {
         // The database closed under a call in flight (shutdown), or took no write. A click whose
         // outcome was not stored is still on its Offer: the next start reads it, and so does the
         // next cycle unless its call had gone out (`unstored`).
         if (!stopped) {
-          const held = unstored.has(id) ? "; it is not sent again before a restart or a click" : "";
+          const held =
+            phases.get(id) === "unstored"
+              ? "; it is not sent again before a restart or a click"
+              : "";
           console.error(`Analysis of Offer ${id} stopped on an internal error${held}`);
         }
       } finally {
-        inFlight = undefined;
+        if (phases.get(id) !== "unstored") phases.delete(id);
       }
     }
   }
 
   function enqueue(id: number): void {
-    // The call in flight reads the Offer's words as they are now: it is a click's reading too.
-    if (inFlight === id) return;
-    if (queued.has(id) || unstored.has(id)) return;
-    queued.add(id);
+    // In flight, its call reads the Offer's words as they are now: it is a click's reading too.
+    if (phases.has(id)) return;
+    phases.set(id, "queued");
     queue.push(id);
   }
 
@@ -517,7 +525,7 @@ export function createAnalysis(deps: {
       // The call in flight is not counted; if it leaves too little, the click stays owed and waits
       // for the cap.
       const room =
-        inFlight === id || typeof page === "string"
+        inFlight(id) || typeof page === "string"
           ? "realtime"
           : roomFor(
               firstRequest({
@@ -533,7 +541,7 @@ export function createAnalysis(deps: {
       // Stored before the 202 is given, so a restart still owes the read.
       offers.requestReanalysis(id);
       // A click is the seeker asking for one more try, also of a call whose outcome was lost.
-      if (inFlight !== id) unstored.delete(id);
+      if (phases.get(id) === "unstored") phases.delete(id);
       if (room === "batch") {
         batch.enqueue([job], { plan, holder: "realtime" });
         batch.kick();

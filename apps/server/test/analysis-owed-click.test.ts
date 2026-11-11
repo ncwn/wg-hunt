@@ -369,6 +369,60 @@ describe("a call whose outcome the database would not store", () => {
     expect(api.requests).toHaveLength(sent);
   });
 
+  it("says so on a clicked Offer, which keeps its earlier reading and waits for another click", async () => {
+    const api = holdableProvider();
+    const h = bootWith(api);
+    await setKey(h);
+    const [offer] = await crawlOffers(h, 1);
+    const id = offer?.id as number;
+    api.hold();
+    expect((await click(h, id)).status).toBe(202);
+    refuseWrites(h);
+    api.release();
+    await h.runtime.analysis.idle();
+    h.runtime.db.$client.pragma("query_only = OFF");
+
+    expect((await offerOf(h, id)).analysisStatus).toEqual({
+      status: "kept-previous",
+      next: "reanalyze",
+      reason: "outcome_not_stored",
+      at: null,
+      willRead: false,
+    });
+    expect((await h.json("GET", "/analysis")).body.awaiting).toBe(0);
+
+    expect((await click(h, id)).status).toBe(202);
+    await h.runtime.analysis.idle();
+    expect(await statusOf(h, id)).toBe("analyzed");
+  });
+
+  it("says so on a new Offer, which waits for a click instead of counting as queued", async () => {
+    const api = holdableProvider();
+    const h = bootWith(api);
+    await setKey(h);
+    api.hold();
+    h.site.cards = h.freshCards([9000001]);
+    await h.addSearch();
+    await h.crawl();
+    await waitFor(() => api.requests.length === 1);
+    refuseWrites(h);
+    api.release();
+    await h.runtime.analysis.idle();
+    h.runtime.db.$client.pragma("query_only = OFF");
+    const id = await idOf(h, 9000001);
+
+    expect((await offerOf(h, id)).analysisStatus).toEqual({
+      status: "needs-click",
+      next: "reanalyze",
+      reason: "outcome_not_stored",
+      at: null,
+      willRead: false,
+    });
+    const overview = (await h.json("GET", "/analysis")).body;
+    expect(overview.awaiting).toBe(0);
+    expect(overview.byStatus).toMatchObject({ "needs-click": 1, queued: 0 });
+  });
+
   it("is sent once more when the seeker clicks again", async () => {
     const api = holdableProvider();
     const h = bootWith(api);

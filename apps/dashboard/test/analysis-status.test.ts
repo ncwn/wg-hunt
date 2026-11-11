@@ -38,6 +38,23 @@ describe("an Offer's analysis note", () => {
     );
   });
 
+  it("says a reading that could not be saved was made, instead of printing the reason's code", () => {
+    const lost = { reason: "outcome_not_stored", next: "reanalyze" as const };
+    for (const kind of ["needs-click", "kept-previous"] as const) {
+      const note = analysisNote(status({ status: kind, ...lost }));
+      expect(note, kind).toMatch(/could not be saved/);
+      expect(note, kind).toMatch(/Re-analyse to try again/);
+      expect(note, kind).not.toMatch(/outcome_not_stored/);
+      expect(analysisNeedsYou(status({ status: kind, ...lost }))).toBe(true);
+    }
+    expect(analysisNote(status({ status: "kept-previous", ...lost }))).toMatch(
+      /earlier one is shown/,
+    );
+    expect(analysisNote(status({ status: "needs-click", ...lost, next: "add-key" }))).toMatch(
+      /add an Anthropic API key/,
+    );
+  });
+
   it("says to Recheck, not to Re-analyse, when the stored copy of the ad is what failed", () => {
     for (const reason of ["no_stored_page", "unreadable_page"]) {
       for (const kind of ["kept-previous", "escalation-lost", "waiting-for-page"] as const) {
