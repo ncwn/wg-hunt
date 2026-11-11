@@ -162,12 +162,10 @@ export function createAnalysis(deps: {
     announceAll([offerId]);
   }
 
-  function fail(job: AnalysisJob, kind: string): void {
-    offers.failAnalysis(job.id, kind);
-    phases.set(job.id, "taken");
+  function fail(offerId: number, kind: string): void {
+    offers.failAnalysis(offerId, kind);
     // The kind is all that is ever logged: never a message, a key or any Offer text.
-    console.error(`Analysis of Offer ${job.id} failed: ${kind}`);
-    announce(job.id);
+    console.error(`Analysis of Offer ${offerId} failed: ${kind}`);
   }
 
   /**
@@ -190,7 +188,9 @@ export function createAnalysis(deps: {
 
     const page = reader.read(job);
     if (typeof page === "string") {
-      fail(job, page);
+      fail(id, page);
+      phases.set(id, "taken");
+      announce(id);
       return "done";
     }
 
@@ -224,15 +224,16 @@ export function createAnalysis(deps: {
       );
       const hash = contentHash(page.text);
       // A merge during the call may have moved the room to another Offer: the answer is its, a
-      // click it took over included. Stored where that Offer shows other words, has read further
-      // into these, or waits on a batch's answer for them, it would overwrite a result, escalate
-      // a second time or be overwritten in turn. The call is metered all the same.
+      // click it took over included. Stored where that Offer shows other words, or waits on a
+      // batch's answer for them, it would overwrite a result, escalate a second time or be
+      // overwritten in turn; so would an ordinary read where it has read further into them, but a
+      // click asks for another read whatever is held. The call is metered all the same.
       const holder = offers.mergedInto(id) ?? id;
       const now = offers.analysisJob(holder);
       if (
         now === undefined ||
         (now.contentHash !== null && now.contentHash !== hash) ||
-        now.readDepth > job.readDepth ||
+        (!force && now.readDepth > job.readDepth) ||
         batch.heldBy(holder) === "batch"
       ) {
         phases.set(id, "taken");
@@ -275,18 +276,25 @@ export function createAnalysis(deps: {
       return "done";
     } catch (error) {
       // Its call went out and nothing is stored yet: an error that leaves this function from
-      // here on leaves the Offer `unstored`.
-      if (phases.get(id) === "reading") phases.set(id, "unstored");
+      // here on leaves the Offer that holds the room `unstored`.
+      const sent = phases.get(id) === "reading";
+      if (sent) phases.set(id, "unstored");
+      const holder = offers.mergedInto(id) ?? id;
+      // The drain loop clears only `id`'s phase, and a phase the holder already has is its own.
+      const marked = sent && holder !== id && !phases.has(holder);
+      if (holder !== id) phases.delete(id);
+      if (marked) phases.set(holder, "unstored");
       const kind = error instanceof ProviderError ? error.kind : "server_error";
       const policy = ERROR_KINDS[kind];
       if (policy.perOffer === "not-a-failure") {
         // Nothing was sent, so there is nothing to store; a click on it stays owed.
-        phases.set(id, "taken");
-        if (kind === "spend_cap_reached") noRoom.add(id);
-        announce(id);
+        if (kind === "spend_cap_reached") noRoom.add(holder);
       } else {
-        fail(job, kind);
+        fail(holder, kind);
       }
+      phases.set(id, "taken");
+      if (marked) phases.delete(holder);
+      announceAll([id, holder]);
       if (!policy.stopsQueue) return "done";
       return policy.perOffer === "not-a-failure" ? "cap" : "key-refused";
     }

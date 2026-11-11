@@ -1,5 +1,5 @@
-import type { AnalysisProvider, BatchRequest } from "@wg-hunt/core";
-import { fakeBatchProvider, fakeProvider } from "@wg-hunt/core/analysis/testing";
+import { type AnalysisProvider, type BatchRequest, ProviderError } from "@wg-hunt/core";
+import { fakeBatchProvider, fakeProvider, type Scripted } from "@wg-hunt/core/analysis/testing";
 import { describe, expect, it, vi } from "vitest";
 import { carryWaiting } from "../src/analysis/batch-state.js";
 import { analysisItems, analysisUsage, offerAds, offers } from "../src/db/schema.js";
@@ -483,6 +483,89 @@ describe("a merge while a realtime read is out", () => {
     expect(waiting(h)).toEqual([]);
     expect(usageRows(h, false)).toBe(1);
     expect(usageRows(h, true)).toBe(2);
+  });
+
+  /**
+   * Two Offers with the same words: `finished` holds the final result, `clicked` was refused and
+   * has read nothing. A click on `clicked` is out, answered with `answer`.
+   */
+  async function clickOut(answer: Scripted) {
+    const held = heldRealtime(
+      (call) => [anmeldungOk, new ProviderError("refused"), answer][Math.min(call, 2)] as Scripted,
+      2,
+    );
+    const h = boot({
+      sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([anmeldungOk]) },
+    });
+    const { room: finished, other: clicked } = await postedTwice(h);
+    await setKey(h);
+    await h.runtime.analysis.idle();
+    expect(h.runtime.offers.analysisJob(clicked)).toMatchObject({ state: "failed", readDepth: 0 });
+    expect(h.runtime.offers.analysisJob(finished)?.readDepth).toBe(2);
+    expect(waiting(h)).toEqual([]);
+    const result = (await offerOf(h, finished)).analysis;
+    await click(h, clicked);
+    await held.out();
+    h.clock.now += MINUTE;
+    return { h, held, finished, clicked, result };
+  }
+
+  for (const survives of ["clicked", "finished"] as const) {
+    const other = survives === "clicked" ? "finished" : "clicked";
+
+    it(`stores a click's read over the final result it was merged with: ${survives} survives`, async () => {
+      const { h, held, result, ...ids } = await clickOut(anmeldungOk);
+
+      await merge(h, ids[survives], ids[other]);
+      held.release();
+      await h.runtime.analysis.idle();
+
+      const merged = ids[survives];
+      const stored = await offerOf(h, merged);
+      expect(stored.analysis.analyzedAt).not.toBe(result.analyzedAt);
+      expect(stored.analysisStatus.status).toBe("analyzed");
+      expect(h.runtime.offers.analysisJob(merged)?.reanalyzeRequestedAt).toBe(null);
+      h.runtime.analysis.sweep();
+      await h.runtime.analysis.idle();
+      expect(held.realtime.requests).toHaveLength(3);
+      expect(waiting(h)).toEqual([]);
+    });
+
+    it(`hands a click over to its escalation on the final result it was merged with: ${survives} survives`, async () => {
+      const { h, held, result, ...ids } = await clickOut(doubtful);
+
+      await merge(h, ids[survives], ids[other]);
+      held.release();
+      await h.runtime.analysis.idle();
+
+      const merged = ids[survives];
+      expect((await offerOf(h, merged)).analysis).toEqual(result);
+      expect(h.runtime.offers.analysisJob(merged)?.reanalyzeRequestedAt).toBe(null);
+      expect(waiting(h)).toMatchObject([{ offerId: merged, stage: 2 }]);
+      h.runtime.analysis.sweep();
+      await h.runtime.analysis.idle();
+      expect(held.realtime.requests).toHaveLength(3);
+      expect(h.batch.submissions.flat()).toHaveLength(1);
+      expect(waiting(h)).toHaveLength(1);
+    });
+  }
+
+  it("records a click's failed call on the Offer that absorbed the one it went out for", async () => {
+    const { h, held, finished, clicked } = await clickOut(new ProviderError("truncated"));
+
+    await merge(h, finished, clicked);
+    held.release();
+    await h.runtime.analysis.idle();
+
+    expect(h.runtime.offers.analysisJob(finished)).toMatchObject({
+      reanalyzeRequestedAt: null,
+      failure: { kind: "truncated" },
+    });
+    expect((await offerOf(h, finished)).analysisStatus.status).not.toBe("reading");
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+    expect(held.realtime.requests).toHaveLength(3);
+    expect(waiting(h)).toEqual([]);
   });
 
   it("drops a click's answer when the merged Offer shows other words", async () => {
