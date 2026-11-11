@@ -57,32 +57,47 @@ export const WAITING: readonly AnalysisItemState[] = ["queued", "submitted"];
 export const SETTLED: readonly AnalysisItemState[] = ["applied", "failed", "capped", "dropped"];
 
 /**
- * Runs in the merge's transaction, before the absorbed Offer's row goes and takes its items along.
- * A request for words the survivor no longer shows is dropped when it is sent or answered, like any
- * other whose Offer's words changed.
+ * Runs in the merge's transaction, before the absorbed Offer's row goes and takes its other items
+ * along. `words`: the merged Offer's `contentHash`. A request for other words stays behind: on the
+ * survivor it would hold the Offer until its batch ends, only to be dropped.
  */
-export function carryWaiting(db: Db, absorbedId: number, survivorId: number): void {
+export function carryWaiting(
+  db: Db,
+  absorbedId: number,
+  survivorId: number,
+  words: string | null,
+): void {
   db.update(analysisItems)
     .set({ offerId: survivorId })
-    .where(and(eq(analysisItems.offerId, absorbedId), inArray(analysisItems.state, WAITING)))
+    .where(
+      and(
+        eq(analysisItems.offerId, absorbedId),
+        inArray(analysisItems.state, WAITING),
+        words === null ? undefined : eq(analysisItems.contentHash, words),
+      ),
+    )
     .run();
   const waiting = db
     .select()
     .from(analysisItems)
     .where(and(eq(analysisItems.offerId, survivorId), inArray(analysisItems.state, WAITING)))
-    // Sent requests are billed whatever happens here and a run counts its own, so those are the
-    // ones to keep.
-    .orderBy(desc(analysisItems.state), sql`${analysisItems.runId} is null`, asc(analysisItems.id))
+    // The one furthest along stays, and a run's before one nobody counts.
+    .orderBy(
+      desc(analysisItems.stage),
+      desc(analysisItems.state),
+      sql`${analysisItems.runId} is null`,
+      asc(analysisItems.id),
+    )
     .all();
   const carried = new Set<string>();
   for (const item of waiting) {
-    const words = `${item.stage}:${item.contentHash}`;
-    // Both Offers were waiting on the same words: sending both bills them twice.
-    if (item.state === "queued" && item.runId === null && carried.has(words)) {
-      db.delete(analysisItems).where(eq(analysisItems.id, item.id)).run();
+    if (!carried.has(item.contentHash)) {
+      carried.add(item.contentHash);
       continue;
     }
-    carried.add(words);
+    // Both Offers were waiting on these words. A second answer would overwrite a newer result or
+    // ask for a second escalation; one already sent is still priced, as an orphan of its batch.
+    db.delete(analysisItems).where(eq(analysisItems.id, item.id)).run();
   }
 }
 
@@ -169,22 +184,6 @@ export function createBatchState(deps: {
     failed?: AnalysisErrorKind;
   }): void {
     atomically(() => {
-      // Twins a merge carried over each ask for the same escalation; one request reads the words.
-      const carried =
-        args.failed === undefined &&
-        db
-          .select({ id: analysisItems.id })
-          .from(analysisItems)
-          .where(
-            and(
-              eq(analysisItems.offerId, args.offerId),
-              eq(analysisItems.stage, args.stage),
-              eq(analysisItems.contentHash, args.contentHash),
-              inArray(analysisItems.state, WAITING),
-            ),
-          )
-          .get();
-      if (carried) return;
       const row = db
         .insert(analysisItems)
         .values({

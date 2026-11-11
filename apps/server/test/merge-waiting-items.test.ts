@@ -1,14 +1,15 @@
 import type { AnalysisProvider } from "@wg-hunt/core";
-import { fakeBatchProvider, fakeProvider } from "@wg-hunt/core/analysis/testing";
+import { fakeBatchProvider, fakeProvider, type Scripted } from "@wg-hunt/core/analysis/testing";
 import { describe, expect, it } from "vitest";
 import { carryWaiting } from "../src/analysis/batch-state.js";
-import { analysisItems, analysisRuns, offers } from "../src/db/schema.js";
+import { analysisItems, analysisUsage, offers } from "../src/db/schema.js";
 import {
   anmeldungOk,
   type Boot,
   boot,
   change,
   doubtful,
+  MINUTE,
   offerOf,
   poll,
   setKey,
@@ -160,29 +161,87 @@ describe("a merge while a batch reads the absorbed Offer's words", () => {
   });
 });
 
+/** Posted twice with the same words, then split: two Offers a batch reads the same words for. */
+async function twins(batchScript: Scripted[], size = 100) {
+  const h = boot({ batchScript, size });
+  const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
+  ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
+  const room = await idOf(h, 9000001);
+  const split = await h.json("POST", `/offers/${room}/split`, { adId: "9000002" });
+  expect(split.status).toBe(201);
+  await change(h, { batchOnly: true });
+  await setKey(h);
+  await h.runtime.analysis.idle();
+  return { h, room, other: split.body.id as number };
+}
+
 describe("a merge of two Offers a batch is reading the same words for", () => {
   it("escalates the words once, though both first passes ask for it", async () => {
-    const h = boot({ batchScript: [doubtful, doubtful, anmeldungOk] });
-    const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
-    // Posted twice with the same words, then split: two Offers a batch reads the same words for.
-    ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
-    const room = await idOf(h, 9000001);
-    const split = await h.json("POST", `/offers/${room}/split`, { adId: "9000002" });
-    expect(split.status).toBe(201);
-    await change(h, { batchOnly: true });
-    await setKey(h);
-    await h.runtime.analysis.idle();
-    const [first, second] = waiting(h);
-    expect([first?.state, second?.state]).toEqual(["submitted", "submitted"]);
-    expect(first?.contentHash).toBe(second?.contentHash);
+    const { h, room, other } = await twins([doubtful, doubtful, anmeldungOk]);
+    expect(waiting(h)).toMatchObject([{ state: "submitted" }, { state: "submitted" }]);
 
-    await merge(h, room, split.body.id);
+    await merge(h, room, other);
     await endBatch(h);
 
     expect(h.batch.submissions.map((batch) => batch.length)).toEqual([2, 1]);
     await endBatch(h);
     expect((await offerOf(h, room)).analysis.escalated).toBe(true);
     expect(waiting(h)).toEqual([]);
+  });
+});
+
+describe("a merge of two Offers whose same words are in two batches", () => {
+  for (const [late, answer] of [
+    ["is sure", anmeldungOk],
+    ["asks for an escalation", doubtful],
+  ] as const) {
+    it(`keeps the escalated result when the other first pass ends late and ${late}`, async () => {
+      const { h, room, other } = await twins([doubtful, anmeldungOk, answer, anmeldungOk], 1);
+      await merge(h, room, other);
+      await poll(h);
+      h.batch.complete("batch-1");
+      await poll(h);
+      h.batch.complete("batch-3");
+      await poll(h);
+      expect((await offerOf(h, room)).analysis.escalated).toBe(true);
+
+      h.batch.complete("batch-2");
+      await poll(h);
+
+      const end = await offerOf(h, room);
+      expect(end.analysis.escalated).toBe(true);
+      expect(end.analysisStatus.status).toBe("analyzed");
+      expect(h.batch.submissions).toHaveLength(3);
+      expect(waiting(h)).toEqual([]);
+      // The late answer was billed all the same.
+      const billed = h.runtime.db.select().from(analysisUsage).all();
+      expect(billed.filter((row) => row.batch)).toHaveLength(3);
+    });
+  }
+});
+
+describe("a merge while a batch reads words the survivor does not show", () => {
+  it("leaves the survivor free to be read on a click", async () => {
+    const h = boot();
+    await setKey(h);
+    await change(h, { batchOnly: true });
+    ingestStored(h, TAKEN);
+    await h.runtime.analysis.idle();
+    // Fetched later, so its page stays the merged Offer's.
+    h.clock.now += MINUTE;
+    await change(h, { batchOnly: false });
+    ingestStored(h, KEPT);
+    await h.runtime.analysis.idle();
+    const [kept, taken] = [await idOf(h, KEPT.adId), await idOf(h, TAKEN.adId)];
+    expect(waiting(h)).toMatchObject([{ offerId: taken, state: "submitted" }]);
+    expect(h.requests).toHaveLength(1);
+
+    await merge(h, kept, taken);
+
+    expect(await statusOf(h, kept)).toBe("analyzed");
+    await click(h, kept);
+    await h.runtime.analysis.idle();
+    expect(h.requests).toHaveLength(2);
   });
 });
 
@@ -200,36 +259,25 @@ describe("the waiting requests a survivor takes over", () => {
           offerId,
           stage: 1,
           state: "queued",
-          contentHash: "same-words",
+          contentHash: "shown",
           plan: "{}",
           createdAt: new Date(h.clock.now),
           ...item,
         })
         .returning()
         .get().id;
-    const carry = () => db.$client.transaction(() => carryWaiting(db, taken.id, kept.id))();
+    const carry = (words: string | null = "shown") =>
+      db.$client.transaction(() => carryWaiting(db, taken.id, kept.id, words))();
     const left = () =>
       db
         .select()
         .from(analysisItems)
         .all()
         .map((item) => ({ id: item.id, offerId: item.offerId }));
-    return { h, kept: kept.id, taken: taken.id, add, carry, left };
+    return { kept: kept.id, taken: taken.id, add, carry, left };
   }
 
-  it("drops a queued request for words another of its requests already carries", () => {
-    const { kept, taken, add, carry, left } = twoOffers();
-    const mine = add(kept, {});
-    add(taken, {});
-    const otherWords = add(taken, { contentHash: "other-words" });
-    const escalation = add(taken, { stage: 2 });
-
-    carry();
-
-    expect(left()).toEqual([mine, otherWords, escalation].map((id) => ({ id, offerId: kept })));
-  });
-
-  it("keeps the request that was sent over its queued twin", () => {
+  it("keeps the request that was sent over a queued one for the same words", () => {
     const { kept, taken, add, carry, left } = twoOffers();
     add(kept, {});
     const sent = add(taken, { state: "submitted" });
@@ -239,33 +287,39 @@ describe("the waiting requests a survivor takes over", () => {
     expect(left()).toEqual([{ id: sent, offerId: kept }]);
   });
 
-  it("keeps a run's queued request, which the run still counts", () => {
-    const { h, kept, taken, add, carry, left } = twoOffers();
-    const runId = h.runtime.db
-      .insert(analysisRuns)
-      .values({
-        createdAt: new Date(h.clock.now),
-        analysisVersion: "v",
-        estimatedCostMicros: 0,
-        offerCount: 1,
-      })
-      .returning()
-      .get().id;
-    const mine = add(kept, { state: "submitted" });
-    const inRun = add(taken, { runId });
+  it("keeps an escalation over a first pass for the same words, and one of two sent", () => {
+    const { kept, taken, add, carry, left } = twoOffers();
+    add(kept, { state: "submitted" });
+    add(taken, { state: "submitted" });
+    const escalation = add(taken, { stage: 2 });
 
     carry();
 
-    expect(left()).toEqual([mine, inRun].map((id) => ({ id, offerId: kept })));
+    expect(left()).toEqual([{ id: escalation, offerId: kept }]);
   });
 
-  it("leaves requests that are no longer waiting to go with the absorbed Offer", () => {
+  it("leaves a request for words the merged Offer does not show, and a settled one, behind", () => {
     const { kept, taken, add, carry, left } = twoOffers();
-    add(taken, { state: "applied" });
-    const mine = add(kept, {});
+    const otherWords = add(taken, { state: "submitted", contentHash: "not shown" });
+    const settled = add(taken, { state: "applied" });
+    const mine = add(kept, { contentHash: "mine" });
 
     carry();
 
-    expect(left().filter((item) => item.offerId === kept)).toEqual([{ id: mine, offerId: kept }]);
+    expect(left()).toEqual([
+      { id: otherWords, offerId: taken },
+      { id: settled, offerId: taken },
+      { id: mine, offerId: kept },
+    ]);
+  });
+
+  it("takes every waiting request when the merged Offer's words have no hash yet", () => {
+    const { kept, taken, add, carry, left } = twoOffers();
+    const one = add(taken, { contentHash: "one" });
+    const other = add(taken, { state: "submitted", contentHash: "other" });
+
+    carry(null);
+
+    expect(left()).toEqual([one, other].map((id) => ({ id, offerId: kept })));
   });
 });

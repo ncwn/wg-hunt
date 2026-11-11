@@ -1791,7 +1791,7 @@ export function createOffers(deps: {
         set: { mergedInto: survivorId },
       })
       .run();
-    carryWaiting(db, absorbedId, survivorId);
+    carryWaiting(db, absorbedId, survivorId, current.contentHash);
     db.delete(offers).where(eq(offers.id, absorbedId)).run();
   }
 

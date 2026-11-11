@@ -80,7 +80,7 @@ export const RELATED_CARRY_OVER = {
   pairOverrides:
     "Merge: every pair across the two becomes `same`. Split: every pair of the leaving Ad ID with the ones staying becomes `different`.",
   analysisItems:
-    "Merge: requests still queued or in a batch follow into the survivor, so its words are not sent again and a Re-analyse click's escalation is not lost; one queued for words another already carries is discarded, as is the second escalation two sent ones ask for, and settled ones go with the absorbed Offer. Split: they stay with the Offer left behind.",
+    "Merge: a request still queued or in a batch for the words the merged Offer shows follows into the survivor, so those words are not sent again and a Re-analyse click's escalation is not lost. The survivor keeps one request per words, the one furthest along; the rest, requests for other words and settled ones go with the absorbed Offer. Split: they stay with the Offer left behind.",
   links: "Written afresh for every Ad ID involved.",
   tombstone:
     "Merge: the absorbed id points at the survivor, and so does every id that pointed at the absorbed one. Split: none.",
