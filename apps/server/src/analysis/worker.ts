@@ -214,6 +214,7 @@ export function createAnalysis(deps: {
       return "skipped";
     }
 
+    const hash = contentHash(page.text);
     phases.set(id, "reading");
     announce(id);
     try {
@@ -222,7 +223,6 @@ export function createAnalysis(deps: {
         request,
         options.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))),
       );
-      const hash = contentHash(page.text);
       // A merge during the call may have moved the room to another Offer: the answer is its, a
       // click it took over included. Stored where that Offer shows other words, or waits on a
       // batch's answer for them, it would overwrite a result, escalate a second time or be
@@ -290,7 +290,10 @@ export function createAnalysis(deps: {
         // Nothing was sent, so there is nothing to store; a click on it stays owed.
         if (kind === "spend_cap_reached") noRoom.add(holder);
       } else {
-        fail(holder, kind);
+        // A failure for words the Offer no longer shows says nothing about the ones it does: a
+        // click it took over stays owed and is read for those.
+        const shown = offers.analysisJob(holder)?.contentHash;
+        if (shown === null || shown === hash) fail(holder, kind);
       }
       phases.set(id, "taken");
       if (marked) phases.delete(holder);

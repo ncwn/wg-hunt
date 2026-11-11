@@ -569,6 +569,50 @@ describe("a merge while a realtime read is out", () => {
     expect(waiting(h)).toEqual([]);
   });
 
+  for (const [kind, before] of [
+    ["truncated", "failed"],
+    ["invalid_response", "failed"],
+    ["truncated", "analyzed"],
+  ] as const) {
+    it(`records no ${kind} on a survivor showing other words, ${before} before the merge`, async () => {
+      const held = heldRealtime(
+        (call) =>
+          [
+            anmeldungOk,
+            before === "analyzed" ? anmeldungOk : new ProviderError("refused"),
+            new ProviderError(kind),
+            anmeldungOk,
+          ][Math.min(call, 3)] as Scripted,
+        2,
+      );
+      const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });
+      await setKey(h);
+      ingestStored(h, KEPT, TAKEN);
+      await h.runtime.analysis.idle();
+      const [clicked, shown] = [await idOf(h, KEPT.adId), await idOf(h, TAKEN.adId)];
+      expect(h.runtime.offers.analysisJob(shown)?.state).toBe(before);
+      await click(h, clicked);
+      await held.out();
+
+      await merge(h, shown, clicked);
+      expect(h.runtime.offers.analysisJob(shown)?.adId).toBe(String(TAKEN.adId));
+      h.clock.now += MINUTE;
+      held.release();
+      await h.runtime.analysis.idle();
+      h.runtime.analysis.sweep();
+      await h.runtime.analysis.idle();
+
+      expect(h.runtime.offers.analysisJob(shown)).toMatchObject({
+        state: "analyzed",
+        wordsChanged: false,
+        reanalyzeRequestedAt: null,
+        failure: null,
+      });
+      expect((await offerOf(h, shown)).analysisStatus.status).toBe("analyzed");
+      expect(held.realtime.requests).toHaveLength(4);
+    });
+  }
+
   it("drops a click's answer when the merged Offer shows other words", async () => {
     const held = heldRealtime([anmeldungOk, anmeldungOk, doubtful], 2);
     const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });
