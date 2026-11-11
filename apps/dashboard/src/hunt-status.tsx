@@ -15,9 +15,8 @@ export type Hunt = {
   stopped?: { why: string; next: string };
   /** Nothing waits for the seeker, now or after a break. */
   on: boolean;
-  /** A break can't be cut short. */
-  canResume: boolean;
-  canPause: boolean;
+  /** The one the server offers now; a break can't be cut short. */
+  control: "pause" | "resume" | null;
 };
 
 /** So an empty list never promises a check that isn't coming. */
@@ -34,8 +33,11 @@ function describeHunt(crawl: CrawlStatus, now: Date = new Date()): Hunt {
   const holds = crawl.holds;
   const common = {
     on: holds.length === 0,
-    canResume: crawl.actions.resume,
-    canPause: crawl.actions.pause,
+    control: crawl.actions.resume
+      ? ("resume" as const)
+      : crawl.actions.pause
+        ? ("pause" as const)
+        : null,
   };
   switch (crawl.state) {
     case "running":
@@ -91,15 +93,21 @@ function describeHunt(crawl: CrawlStatus, now: Date = new Date()): Hunt {
         "Free some space, then resume.",
       );
     case "wiped":
-      // The seeker's own doing, not an alarm. While the deletion runs the server refuses Resume.
-      return {
-        ...common,
-        state: "paused",
-        detail: crawl.actions.resume ? undefined : "Deleting all offer data",
-        sentence: crawl.actions.resume
-          ? "Hunting is paused because you deleted all offer data. Resume, and wg-hunt reads every Search from the start."
-          : "wg-hunt is deleting all offer data. Hunting stays paused until you resume it afterwards.",
-      };
+      // The seeker's own doing, not an alarm.
+      return crawl.actions.resumeRefusedBy === "wipe-running"
+        ? {
+            ...common,
+            state: "paused",
+            detail: "Deleting all offer data",
+            sentence:
+              "wg-hunt is deleting all offer data. Hunting stays paused until you resume it afterwards.",
+          }
+        : {
+            ...common,
+            state: "paused",
+            sentence:
+              "Hunting is paused because you deleted all offer data. Resume, and wg-hunt reads every Search from the start.",
+          };
   }
 }
 
@@ -126,11 +134,7 @@ function breakWords(crawl: CrawlStatus, now: Date): Pick<Hunt, "detail" | "sente
   };
 }
 
-function stoppedHunt(
-  common: Pick<Hunt, "on" | "canResume" | "canPause">,
-  why: string,
-  next: string,
-): Hunt {
+function stoppedHunt(common: Pick<Hunt, "on" | "control">, why: string, next: string): Hunt {
   return { ...common, state: "needs-you", sentence: `${why} ${next}`, stopped: { why, next } };
 }
 

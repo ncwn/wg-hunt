@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ApiClient } from "./api/client.js";
 import { ask, type Result } from "./api/result.js";
 import type { CrawlStatus, EventStream } from "./events.js";
@@ -12,6 +12,9 @@ export const CRAWL_RETRY_MS = 15_000;
 
 export function useCrawlStatus(api: ApiClient, events: EventStream) {
   const [view, setView] = useState<CrawlStatusView>({ status: "loading" });
+  // Counts statuses heard. A Pause or Resume answered after one is older than it, and the loop
+  // only publishes again on a change, so that answer is dropped.
+  const heard = useRef(0);
 
   const read = useCallback(
     () =>
@@ -40,6 +43,7 @@ export function useCrawlStatus(api: ApiClient, events: EventStream) {
     // read: whether a break ends by itself, and what the seeker may do, are the server's to say.
     const stop = events.subscribe((event) => {
       if (!cancelled && event.type === "crawl-status-changed") {
+        heard.current += 1;
         setView({ status: "ready", crawl: event.data });
       }
     });
@@ -63,9 +67,10 @@ export function useCrawlStatus(api: ApiClient, events: EventStream) {
 
   const act = useCallback(
     async (path: "/crawl/pause" | "/crawl/resume"): Promise<Result<undefined>> => {
+      const since = heard.current;
       const result = await ask(() => api.POST(path));
       if (!result.ok) return result;
-      setView({ status: "ready", crawl: result.data });
+      if (heard.current === since) setView({ status: "ready", crawl: result.data });
       return { ok: true, data: undefined };
     },
     [api],

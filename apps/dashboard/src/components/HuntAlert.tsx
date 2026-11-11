@@ -35,7 +35,7 @@ function Alarm({ hunt, resume }: { hunt: Hunt; resume: () => Promise<Result<unde
         {hunt.stopped && <p>{hunt.stopped.next}</p>}
         {resuming.state.status === "failed" && <p>{resuming.state.message}</p>}
       </Notice>
-      {hunt.canResume && (
+      {hunt.control === "resume" && (
         <Button
           variant="primary"
           className="hunt-alert-resume"

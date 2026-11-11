@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { putSetting } from "../../server/src/db/settings.js";
+import { WIPE_CONFIRMATION } from "../../server/src/retention/constants.js";
 import { apiText, cliFor, limitRent, problemOf, serverWith, tempDir } from "./harness.js";
 
 describe("--json", () => {
@@ -221,6 +222,44 @@ describe("human output", () => {
     expect((await wg("analysis", "status")).stdout).toContain("Anthropic key");
     expect((await wg("health")).stdout).toMatch(/^ok +version /);
     expect((await wg("crawl", "requests")).stdout).toMatch(/^AT +KIND/);
+  });
+});
+
+describe("crawl status while Offer data is deleted", () => {
+  it("says a Resume waits for the deletion, not a Cooldown", async () => {
+    const server = await serverWith();
+    const wg = cliFor(server.runtime);
+    server.clock.now += 6 * 60 * 60_000;
+    const original = server.fetcher.fetch;
+    let release!: () => void;
+    const opened = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let started!: () => void;
+    const inFlight = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    server.fetcher.fetch = async (path) => {
+      server.fetcher.fetch = original;
+      started();
+      await opened;
+      return original(path);
+    };
+    server.runtime.crawl.enqueue({ kind: "poll", path: "/wg-zimmer-in-Berlin.8.0.1.0.html" });
+    const step = server.runtime.crawl.step();
+    await inFlight;
+    const wipe = server.json("POST", "/storage/wipe", { confirm: WIPE_CONFIRMATION });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect((await wg("crawl", "status")).stdout).toMatch(
+      /Waits for a person: +wiped; Resume once the deletion is done/,
+    );
+    release();
+    await step;
+    expect((await wipe).status).toBe(200);
+    expect((await wg("crawl", "status")).stdout).toMatch(
+      /Waits for a person: +wiped; Resume lifts them all/,
+    );
   });
 });
 

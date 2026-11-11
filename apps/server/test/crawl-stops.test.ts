@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { JOB_KINDS, type JobKind } from "../src/crawl/constants.js";
 import { createCrawlEngine } from "../src/crawl/engine.js";
 import type { SourceResponse } from "../src/crawl/fetcher.js";
-import { writeJson } from "../src/crawl/kv.js";
+import { readJson, writeJson } from "../src/crawl/kv.js";
 import { listRequests } from "../src/crawl/request-log.js";
 import { defaultCrawlSettings, saveCrawlSettings } from "../src/crawl/settings.js";
 import { type Db, openDatabase } from "../src/db/index.js";
@@ -710,6 +710,77 @@ describe("restart", () => {
       state: "layout-changed",
       paused: { reason: "layout-changed", cause: null, path: "/p.html" },
     });
+  });
+
+  it("reads a Cooldown it cannot read as one that needs a Resume, which then leads to the probe", async () => {
+    const h = harness();
+    writeJson(h.db, "crawl.engine", { cooldown: {} }, MORNING);
+    expect(h.engine.status()).toMatchObject({ state: "needs-resume", holds: ["needs-resume"] });
+    h.queue("/a.html");
+    expect(await h.engine.step()).toMatchObject({ state: "waiting", reason: "needs-resume" });
+    expect(h.engine.resume()).toEqual({ ok: true });
+    expect(h.engine.probing()).toBe(true);
+  });
+
+  it.each([
+    ["a reason from a newer version", { reason: "from-a-newer-version", at: MORNING - HOUR }],
+    ["no object", "x"],
+  ])("reads a Pause it cannot read (%s) as a Pause", async (_, paused) => {
+    const h = harness();
+    writeJson(h.db, "crawl.engine", { paused }, MORNING);
+    expect(h.engine.status()).toMatchObject({
+      state: "paused",
+      paused: { reason: "user", cause: null, path: null, savedAs: null },
+      holds: ["paused"],
+    });
+    h.queue("/a.html");
+    expect(await h.engine.step()).toMatchObject({ state: "waiting", reason: "paused" });
+    expect(h.sent).toEqual([]);
+  });
+
+  it.each([
+    ["no object", ["x"]],
+    ["unreadable Bot checks", { hits: [{ at: "yesterday" }], lastBotCheck: 3 }],
+    ["hits that are no list", { hits: "x" }],
+  ])("reads stored state it cannot read (%s) as running", async (_, stored) => {
+    const h = harness();
+    writeJson(h.db, "crawl.engine", stored, MORNING);
+    expect(h.engine.status()).toMatchObject({ state: "running", holds: [], lastBotCheck: null });
+    h.queue("/a.html");
+    expect(await h.engine.step()).toMatchObject({ state: "requested" });
+  });
+
+  it("stores the stops under the flat keys an older version reads", async () => {
+    const h = harness();
+    h.answers.push(BOT);
+    h.queue("/a.html");
+    h.queue("/b.html");
+    await h.driveUntil(MORNING + HOUR);
+    const cooling = readJson(h.db, "crawl.engine") as Record<string, unknown>;
+    expect(Object.keys(cooling).sort()).toEqual([
+      "cooldown",
+      "hits",
+      "lastBotCheck",
+      "nextRequestAt",
+      "probe",
+      "sessionCount",
+    ]);
+    expect(cooling).toMatchObject({
+      cooldown: { until: MORNING + 2 * HOUR, level: 1, needsResume: false },
+      probe: false,
+    });
+
+    await h.driveUntil(MORNING + 3 * HOUR);
+    const probed = readJson(h.db, "crawl.engine") as Record<string, unknown>;
+    expect(Object.keys(probed).sort()).toEqual([
+      "halfBudgetUntil",
+      "hits",
+      "lastBotCheck",
+      "nextRequestAt",
+      "probe",
+      "sessionCount",
+    ]);
+    expect(probed).toMatchObject({ probe: false, halfBudgetUntil: MORNING + 2 * HOUR + DAY });
   });
 
   it("remembers a pending probe and the half-budget period", async () => {

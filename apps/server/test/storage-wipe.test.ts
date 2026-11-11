@@ -253,6 +253,57 @@ describe("POST /storage/wipe: its own state", () => {
     expect(h.sent.length).toBeGreaterThan(sentBefore);
   });
 
+  it("names wipe-running as the problem a Resume would be refused with while the wipe waits", async () => {
+    const { h } = await populated();
+    h.clock.now += 6 * HOUR;
+    const gate = gateNextFetch(h);
+    const step = h.runtime.crawl.step();
+    await gate.inFlight;
+    const wipe = h.json("POST", "/storage/wipe", CONFIRM);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const { actions } = (await h.json("GET", "/crawl")).body;
+    expect(actions).toEqual({ pause: false, resume: false, resumeRefusedBy: "wipe-running" });
+    const resume = await h.call("POST", "/crawl/resume");
+    expect((await resume.json()).type).toBe(actions.resumeRefusedBy);
+
+    gate.release();
+    await step;
+    expect((await wipe).status).toBe(200);
+    expect((await h.json("GET", "/crawl")).body.actions).toMatchObject({ resumeRefusedBy: null });
+  });
+
+  it("a wipe that fails before its delete runs leaves a plain Pause, not the wipe, as the cause", async () => {
+    const { h, id } = await populated();
+    h.clock.now += 6 * HOUR;
+    const gate = gateNextFetch(h);
+    const step = h.runtime.crawl.step().catch((err: unknown) => err);
+    await gate.inFlight;
+    const wipe = h.call("POST", "/storage/wipe", CONFIRM);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // From here no write of a `wiped` pause gets through: the request in flight fails to store
+    // its state, so the wait for it rejects before the delete is reached.
+    h.runtime.db.$client
+      .prepare(
+        `CREATE TEMP TRIGGER no_wiped BEFORE UPDATE ON settings
+         WHEN NEW.key = 'crawl.engine' AND NEW.value LIKE '%"wiped"%'
+         BEGIN SELECT RAISE(ABORT, 'no'); END`,
+      )
+      .run();
+    gate.release();
+    expect(await step).toBeInstanceOf(Error);
+    expect((await wipe).status).toBe(500);
+
+    expect(recordExists(h, id)).toBe(true);
+    expect((await h.json("GET", "/storage")).body.wipe).toEqual({ running: null, last: null });
+    expect((await h.json("GET", "/crawl")).body).toMatchObject({
+      state: "paused",
+      paused: { reason: "user" },
+      holds: ["paused"],
+      actions: { resume: true, resumeRefusedBy: null },
+    });
+  });
+
   it.each([
     ["finds an unexpected page", () => ({ unexpectedPage: true })],
     [

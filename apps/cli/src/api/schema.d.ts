@@ -3164,8 +3164,13 @@ export interface components {
         CrawlActions: {
             /** @description `POST /crawl/pause` would stop the crawl */
             pause: boolean;
-            /** @description `POST /crawl/resume` would lift the `holds`. False during a Cooldown or while "Delete all Offer data" runs, which refuse it, and when nothing waits for a Resume. */
+            /** @description `POST /crawl/resume` would lift the `holds`. False when nothing waits for a Resume, and when `resumeRefusedBy` says it would be refused. */
             resume: boolean;
+            /**
+             * @description The problem type `POST /crawl/resume` would answer with now. `bot-check-cooldown`: a Cooldown runs. `wipe-running`: "Delete all Offer data" still runs; the Resume after it starts a fresh backfill. Null when it would not be refused.
+             * @enum {string|null}
+             */
+            resumeRefusedBy: "bot-check-cooldown" | "wipe-running" | null;
         };
         BotCheckRecord: {
             /** @description ISO 8601 time of the Bot check */
