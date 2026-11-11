@@ -364,6 +364,95 @@ describe("a merge while the survivor's realtime read is out", () => {
   });
 });
 
+describe("a split while a batch reads an Ad ID's words", () => {
+  const isEscalation = (request: BatchRequest) => request.request.effort === "high";
+  const split = async (h: Boot, id: number, adId: number) => {
+    const made = await h.json("POST", `/offers/${id}/split`, { adId: String(adId) });
+    expect(made.status).toBe(201);
+    return made.body.id as number;
+  };
+
+  /** One Offer of both rooms, whose current Ad ID is TAKEN's, with its words in a batch. */
+  async function mergedRoomInBatch(batchScript: BatchScript = [anmeldungOk]) {
+    const h = boot({ batchScript });
+    ingestStored(h, KEPT, TAKEN);
+    const [room, other] = [await idOf(h, KEPT.adId), await idOf(h, TAKEN.adId)];
+    await merge(h, room, other);
+    await change(h, { batchOnly: true });
+    await setKey(h);
+    await h.runtime.analysis.idle();
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 1, state: "submitted" }]);
+    return { h, room };
+  }
+
+  async function settle(h: Boot) {
+    for (let round = 0; round < 3; round++) {
+      h.runtime.analysis.sweep();
+      await h.runtime.analysis.idle();
+      await endBatch(h);
+    }
+  }
+
+  it("moves the request with the leaving Ad ID, so its words are read once", async () => {
+    const { h, room } = await mergedRoomInBatch();
+
+    const made = await split(h, room, TAKEN.adId);
+
+    expect(waiting(h)).toMatchObject([{ offerId: made, stage: 1, state: "submitted" }]);
+    expect(await statusOf(h, made)).toBe("in-batch");
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+    await poll(h);
+    expect(h.batch.submissions.flat()).toHaveLength(2);
+    expect(waiting(h).map((item) => item.offerId)).toEqual([made, room]);
+    await settle(h);
+    expect(await statusOf(h, made)).toBe("analyzed");
+    expect(await statusOf(h, room)).toBe("analyzed");
+    expect(h.runtime.offers.analysisJob(room)?.wordsChanged).toBe(false);
+    expect(h.batch.submissions.flat()).toHaveLength(2);
+    expect(billedBatchAnswers(h)).toBe(2);
+  });
+
+  it("moves a waiting escalation with the first pass the new Offer takes over", async () => {
+    const { h, room } = await mergedRoomInBatch([doubtful, anmeldungOk]);
+    await endBatch(h);
+    expect(h.runtime.offers.analysisJob(room)?.escalation).not.toBe(null);
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 2, state: "submitted" }]);
+
+    const made = await split(h, room, TAKEN.adId);
+
+    expect(h.runtime.offers.analysisJob(made)?.escalation).not.toBe(null);
+    expect(waiting(h)).toMatchObject([{ offerId: made, stage: 2, state: "submitted" }]);
+    await settle(h);
+    expect(h.batch.submissions.flat().filter(isEscalation)).toHaveLength(1);
+    expect((await offerOf(h, made)).analysis.escalated).toBe(true);
+  });
+
+  it("leaves a request for words the leaving Ad ID does not have", async () => {
+    const { h, room } = await mergedRoomInBatch();
+
+    const made = await split(h, room, KEPT.adId);
+
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 1, state: "submitted" }]);
+    expect(await statusOf(h, made)).not.toBe("in-batch");
+  });
+
+  it("leaves the request when the Offer left behind still shows the same words", async () => {
+    const h = boot();
+    const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
+    ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
+    const room = await idOf(h, 9000001);
+    await change(h, { batchOnly: true });
+    await setKey(h);
+    await h.runtime.analysis.idle();
+    expect(waiting(h)).toMatchObject([{ offerId: room, state: "submitted" }]);
+
+    await split(h, room, 9000002);
+
+    expect(waiting(h)).toMatchObject([{ offerId: room, state: "submitted" }]);
+  });
+});
+
 function orders<T>(events: T[]): T[][] {
   if (events.length <= 1) return [events];
   return events.flatMap((event, index) =>

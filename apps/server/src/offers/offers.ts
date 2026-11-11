@@ -1968,6 +1968,20 @@ export function createOffers(deps: {
         .set({ offerId: made.id })
         .where(and(eq(offerPrices.source, source), eq(offerPrices.adId, adId)))
         .run();
+      // Left behind, a request for the leaving words would hold an Offer that no longer shows them
+      // while the new one sends them again.
+      if (leaving.contentHash !== null && currentAd(staying).contentHash !== leaving.contentHash) {
+        db.update(analysisItems)
+          .set({ offerId: made.id })
+          .where(
+            and(
+              eq(analysisItems.offerId, id),
+              inArray(analysisItems.state, WAITING),
+              eq(analysisItems.contentHash, leaving.contentHash),
+            ),
+          )
+          .run();
+      }
 
       // An Ad ID that never changed the rent has no price point of its own; the Offer it left
       // holds the point it shared, so the new Offer starts its history from this page.
