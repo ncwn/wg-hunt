@@ -392,7 +392,7 @@ describe("a merge while a realtime read is out", () => {
     expect(h.runtime.db.select().from(analysisItems).all()).toEqual([]);
   });
 
-  it("stores a click's read on the Offer that took the click over, and sends the words no more often", async () => {
+  it("ends a click it took over with the escalation waiting on the survivor, and sends the words no more often", async () => {
     const held = heldRealtime([anmeldungOk], 0);
     const h = boot({
       size: 1,
@@ -416,21 +416,27 @@ describe("a merge while a realtime read is out", () => {
     await held.out();
 
     await merge(h, room, other);
-    expect(waiting(h)).toEqual([]);
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 2, state: "submitted" }]);
     expect(h.runtime.offers.analysisJob(room)?.reanalyzeRequestedAt).not.toBe(null);
     h.clock.now += MINUTE;
     held.release();
     await h.runtime.analysis.idle();
+    expect((await offerOf(h, room)).analysis).toEqual(finished);
 
+    h.batch.complete("batch-3");
+    await poll(h);
     const stored = await offerOf(h, room);
-    expect(stored.analysis.analyzedAt).not.toBe(finished.analyzedAt);
+    expect(stored.analysis.escalated).toBe(true);
     expect(stored.analysisStatus.status).toBe("analyzed");
     expect(h.runtime.offers.analysisJob(room)?.reanalyzeRequestedAt).toBe(null);
     h.runtime.analysis.sweep();
     await h.runtime.analysis.idle();
     await poll(h);
-    const firstPasses = h.batch.submissions.flat().filter((request) => !isEscalation(request));
-    expect(held.realtime.requests.length + firstPasses.length).toBe(3);
+    const answers = h.batch.submissions.flat();
+    expect(held.realtime.requests.length + answers.filter((r) => !isEscalation(r)).length).toBe(3);
+    expect(answers.filter(isEscalation)).toHaveLength(1);
+    expect(usageRows(h, false)).toBe(1);
+    expect(usageRows(h, true)).toBe(3);
     expect(waiting(h)).toEqual([]);
   });
 
@@ -688,62 +694,94 @@ describe("a merge of an Offer that owes a Re-analyse click with one that read fu
     });
   }
 
+  /**
+   * Three Offers with the same words: `finished` holds the final result, a batch holds `inBatch`'s
+   * first pass, and `owing` was refused and owes a click that waits with nothing sent.
+   */
+  async function owingClick() {
+    const held = heldRealtime([anmeldungOk], 0);
+    const h = boot({
+      size: 1,
+      sameProviders: {
+        realtime: held.realtime,
+        batch: fakeBatchProvider([anmeldungOk, new ProviderError("refused"), anmeldungOk]),
+      },
+    });
+    const [owing, inBatch, finished] = (await postedWithSameWords(h, 3)) as [
+      number,
+      number,
+      number,
+    ];
+    await change(h, { batchOnly: true });
+    await setKey(h);
+    await h.runtime.analysis.idle();
+    await poll(h);
+    h.batch.complete("batch-3");
+    await poll(h);
+    h.batch.complete("batch-1");
+    await poll(h);
+    expect(h.runtime.offers.analysisJob(finished)?.readDepth).toBe(2);
+    expect(h.runtime.offers.analysisJob(owing)).toMatchObject({ state: "failed", readDepth: 0 });
+    expect(waiting(h)).toMatchObject([{ offerId: inBatch, stage: 1, state: "submitted" }]);
+    // Another room's read holds the realtime worker, so the click waits with nothing sent.
+    await change(h, { batchOnly: false });
+    ingestStored(h, { ...TAKEN, adId: 9000009 });
+    h.runtime.analysis.sweep();
+    await held.out();
+    await click(h, owing);
+    const result = (await offerOf(h, finished)).analysis;
+    return { h, held, owing, inBatch, finished, result };
+  }
+
+  /** The batch's first pass answers on `merged`, ends the click, and nothing is sent again. */
+  async function answeredOnce(
+    { h, held, result }: Awaited<ReturnType<typeof owingClick>>,
+    merged: number,
+  ) {
+    expect(waiting(h)).toMatchObject([{ offerId: merged, stage: 1, state: "submitted" }]);
+    h.clock.now += MINUTE;
+    held.release();
+    await h.runtime.analysis.idle();
+    h.batch.complete("batch-2");
+    await poll(h);
+    const end = await offerOf(h, merged);
+    expect(end.analysis.analyzedAt).not.toBe(result.analyzedAt);
+    expect(end.analysisStatus.status).toBe("analyzed");
+    expect(h.runtime.offers.analysisJob(merged)?.reanalyzeRequestedAt).toBe(null);
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+    await poll(h);
+    expect(held.realtime.requests).toHaveLength(1);
+    expect(h.batch.submissions.flat()).toHaveLength(3);
+    expect(waiting(h)).toEqual([]);
+  }
+
   for (const survives of ["owing", "finished"] as const) {
     it(`keeps another Offer's request it took in while owing a click: ${survives} survives`, async () => {
-      const held = heldRealtime([anmeldungOk], 0);
-      const h = boot({
-        size: 1,
-        sameProviders: {
-          realtime: held.realtime,
-          batch: fakeBatchProvider([anmeldungOk, new ProviderError("refused"), anmeldungOk]),
-        },
-      });
-      const [owing, carried, finished] = (await postedWithSameWords(h, 3)) as [
-        number,
-        number,
-        number,
-      ];
-      await change(h, { batchOnly: true });
-      await setKey(h);
-      await h.runtime.analysis.idle();
-      await poll(h);
-      h.batch.complete("batch-3");
-      await poll(h);
-      h.batch.complete("batch-1");
-      await poll(h);
-      expect(h.runtime.offers.analysisJob(finished)?.readDepth).toBe(2);
-      expect(h.runtime.offers.analysisJob(owing)).toMatchObject({ state: "failed", readDepth: 0 });
-      expect(waiting(h)).toMatchObject([{ offerId: carried, stage: 1, state: "submitted" }]);
-      // Another room's read holds the realtime worker, so the click waits with nothing sent.
-      await change(h, { batchOnly: false });
-      ingestStored(h, { ...TAKEN, adId: 9000009 });
-      h.runtime.analysis.sweep();
-      await held.out();
-      await click(h, owing);
-      await merge(h, owing, carried);
+      const setup = await owingClick();
+      const { h, owing, inBatch, finished } = setup;
+      await merge(h, owing, inBatch);
       expect(h.runtime.offers.analysisJob(owing)?.reanalyzeRequestedAt).not.toBe(null);
       expect(waiting(h)).toMatchObject([{ offerId: owing, stage: 1, state: "submitted" }]);
       const [survivor, absorbed] = survives === "owing" ? [owing, finished] : [finished, owing];
-      const result = (await offerOf(h, finished)).analysis;
 
       await merge(h, survivor, absorbed);
 
-      expect(waiting(h)).toMatchObject([{ offerId: survivor, stage: 1, state: "submitted" }]);
-      h.clock.now += MINUTE;
-      held.release();
-      await h.runtime.analysis.idle();
-      h.batch.complete("batch-2");
-      await poll(h);
-      const end = await offerOf(h, survivor);
-      expect(end.analysis.analyzedAt).not.toBe(result.analyzedAt);
-      expect(end.analysisStatus.status).toBe("analyzed");
-      expect(h.runtime.offers.analysisJob(survivor)?.reanalyzeRequestedAt).toBe(null);
-      h.runtime.analysis.sweep();
-      await h.runtime.analysis.idle();
-      await poll(h);
-      expect(held.realtime.requests).toHaveLength(1);
-      expect(h.batch.submissions.flat()).toHaveLength(3);
-      expect(waiting(h)).toEqual([]);
+      await answeredOnce(setup, survivor);
+    });
+  }
+
+  for (const survives of ["inBatch", "owing"] as const) {
+    it(`keeps the request of an Offer merged with one that took a click over: ${survives} survives`, async () => {
+      const setup = await owingClick();
+      const { h, owing, inBatch, finished } = setup;
+      await merge(h, owing, finished);
+      expect(waiting(h)).toMatchObject([{ offerId: inBatch, stage: 1, state: "submitted" }]);
+      const [survivor, absorbed] = survives === "inBatch" ? [inBatch, owing] : [owing, inBatch];
+
+      await merge(h, survivor, absorbed);
+
+      await answeredOnce(setup, survivor);
     });
   }
 });

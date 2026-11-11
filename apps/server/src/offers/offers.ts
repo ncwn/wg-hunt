@@ -1797,13 +1797,13 @@ export function createOffers(deps: {
       .run();
     // A request is the next step from what its Offer had read: a first read, the escalation of a
     // first pass, or another read after a click or in a run. Answered on an Offer that has read
-    // further, it would overwrite the newer result or ask for a second escalation. A side that owes
-    // a Re-analyse click keeps them whatever the read depths: the answer to any request waiting on
-    // an Offer that owes a click ends that click, so it is the read the click asked for whoever
-    // queued it, and withdrawing it would mean a second paid read.
+    // further, it would overwrite the newer result or ask for a second escalation. A merged Offer
+    // that owes a Re-analyse click keeps both sides' whatever the read depths: the answer to any
+    // request waiting on an Offer that owes a click ends that click, so it is the read the click
+    // asked for whoever queued it, and withdrawing it would mean a second paid read.
     const reached = readDepth(merged, current.contentHash);
     const keeps = (side: OfferRow) =>
-      side.reanalyzeRequestedAt !== null || reached <= readDepth(side, current.contentHash);
+      merged.reanalyzeRequestedAt !== null || reached <= readDepth(side, current.contentHash);
     carryWaiting(db, absorbedId, survivorId, current.contentHash, {
       survivor: keeps(survivor),
       absorbed: keeps(absorbed),
