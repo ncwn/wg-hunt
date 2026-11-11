@@ -394,6 +394,35 @@ describe("Settings: a single setting changes only itself", () => {
     );
     expect((await stored(server, "/settings/crawl")).pacing.dailyCap).toBe(120);
   });
+
+  it("changing one end of the quiet hours keeps the other end saved after Settings was opened", async () => {
+    const server = realServer({ signedIn: true });
+    await server.ready;
+    const landed: Json[] = [];
+    const fetch = async (request: Request) => {
+      const put =
+        request.method === "PUT" && new URL(request.url).pathname.endsWith("/settings/crawl");
+      const body = put ? await request.clone().json() : undefined;
+      const response = await server.fetch(request);
+      if (put && response.ok) landed.push(body);
+      return response;
+    };
+    const { user } = renderDashboard(fetch, "/settings");
+    const from = await screen.findByLabelText("Quiet hours start");
+    const until = screen.getByLabelText("Quiet hours end");
+    await waitFor(() => expect(from.getAttribute("data-value")).toBe("23:30"));
+    expect(until.getAttribute("data-value")).toBe("07:00");
+    await elsewhere(server, "/settings/crawl", (settings) => {
+      settings.pacing.activeHours.start = "06:00";
+    });
+
+    await choose(user, from, "22:00");
+    await waitFor(() => expect(landed).toHaveLength(1));
+    expect(landed[0].pacing.activeHours).toEqual({ start: "06:00", end: "22:00" });
+    await waitFor(() => expect((from as HTMLButtonElement).disabled).toBe(false));
+    expect(from.getAttribute("data-value")).toBe("22:00");
+    expect(until.getAttribute("data-value")).toBe("06:00");
+  });
 });
 
 describe("Settings › Advanced: drafts survive saves made around them", () => {
