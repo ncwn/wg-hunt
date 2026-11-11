@@ -395,6 +395,8 @@ export function createAnalysis(deps: {
     const forBatch: AnalysisJob[] = [];
     for (const job of jobs) {
       if (job.stale || held.has(job.id)) continue;
+      // A batch would bill its words a second time as surely as a realtime call.
+      if (phases.get(job.id) === "unstored") continue;
       if (job.escalation !== null && !job.wordsChanged) {
         if (mayResendEscalation(job, clock())) {
           const { carry, plan, contentHash: hash } = job.escalation;

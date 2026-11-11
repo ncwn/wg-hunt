@@ -423,6 +423,35 @@ describe("a call whose outcome the database would not store", () => {
     expect(overview.byStatus).toMatchObject({ "needs-click": 1, queued: 0 });
   });
 
+  it("is not sent as a batch either, once the Offer has waited long enough to be a backfill", async () => {
+    const api = holdableProvider();
+    const h = bootWith(api);
+    await setKey(h);
+    api.hold();
+    h.site.cards = h.freshCards([9000001]);
+    await h.addSearch();
+    await h.crawl();
+    await waitFor(() => api.requests.length === 1);
+    refuseWrites(h);
+    api.release();
+    await h.runtime.analysis.idle();
+    h.runtime.db.$client.pragma("query_only = OFF");
+    const sent = api.requests.length;
+    const id = await idOf(h, 9000001);
+
+    h.clock.now += 3 * 60 * MINUTE;
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+    await poll(h);
+
+    expect(h.batch.submissions.flat()).toHaveLength(0);
+    expect(api.requests).toHaveLength(sent);
+    expect((await offerOf(h, id)).analysisStatus).toMatchObject({
+      status: "needs-click",
+      reason: "outcome_not_stored",
+    });
+  });
+
   it("is sent once more when the seeker clicks again", async () => {
     const api = holdableProvider();
     const h = bootWith(api);
