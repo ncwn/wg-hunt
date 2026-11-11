@@ -8,6 +8,7 @@ import {
   CRAWL_STATES,
   PAUSE_CAUSES,
   PAUSE_REASONS,
+  RESUME_REFUSALS,
   WAIT_REASONS,
 } from "../crawl/status.js";
 import { settingsStateSchema } from "../settings-state.js";
@@ -123,7 +124,11 @@ const crawlStatusSchema = z
         pause: z.boolean().openapi({ description: "`POST /crawl/pause` would stop the crawl" }),
         resume: z.boolean().openapi({
           description:
-            '`POST /crawl/resume` would lift the `holds`. False during a Cooldown or while "Delete all Offer data" runs, which refuse it, and when nothing waits for a Resume.',
+            "`POST /crawl/resume` would lift the `holds`. False when nothing waits for a Resume, and when `resumeRefusedBy` says it would be refused.",
+        }),
+        resumeRefusedBy: z.enum(RESUME_REFUSALS).nullable().openapi({
+          description:
+            'The problem type `POST /crawl/resume` would answer with now. `bot-check-cooldown`: a Cooldown runs. `wipe-running`: "Delete all Offer data" still runs; the Resume after it starts a fresh backfill. Null when it would not be refused.',
         }),
       })
       .openapi("CrawlActions"),

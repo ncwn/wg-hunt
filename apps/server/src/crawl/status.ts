@@ -38,6 +38,10 @@ export const CRAWL_HOLDS = [
 ] as const;
 export type CrawlHold = (typeof CRAWL_HOLDS)[number];
 
+/** The problem types `POST /crawl/resume` refuses with. */
+export const RESUME_REFUSALS = ["bot-check-cooldown", "wipe-running"] as const;
+type ResumeRefusal = (typeof RESUME_REFUSALS)[number];
+
 export const WAIT_REASONS = [
   "gap",
   "hourly-cap",
@@ -91,7 +95,7 @@ export type CrawlStatus = {
     /** What holds it back now; null when the limits let it go and it only waits for a due job. */
     waitingFor: WaitReason | null;
   };
-  actions: { pause: boolean; resume: boolean };
+  actions: { pause: boolean; resume: boolean; resumeRefusedBy: ResumeRefusal | null };
   halfBudgetUntil: string | null;
   counts: {
     hour: { used: number; cap: number };

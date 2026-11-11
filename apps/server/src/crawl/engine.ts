@@ -1,9 +1,10 @@
+import { z } from "@hono/zod-openapi";
 import type { Db } from "../db/index.js";
 import { errorKind } from "../error-kind.js";
 import type { EventBus } from "../events.js";
 import { LOW_DISK_BYTES } from "../retention/constants.js";
 import { berlinDayStart, nextActiveInstant } from "./berlin-time.js";
-import { type BotCheckMarker, detectBotCheck } from "./bot-check.js";
+import { BOT_CHECK_MARKERS, type BotCheckMarker, detectBotCheck } from "./bot-check.js";
 import {
   COOLDOWN_HISTORY_DAYS,
   COOLDOWN_LADDER_HOURS,
@@ -40,15 +41,17 @@ import {
   saveCrawlSettings,
 } from "./settings.js";
 import { checkSourcePath, ForbiddenPathError, loggedPath } from "./source-paths.js";
-import type {
-  BotCheckEvent,
-  BotCheckRecord,
-  CrawlHold,
-  CrawlState,
-  CrawlStatus,
-  PauseCause,
-  PauseReason,
-  WaitReason,
+import {
+  type BotCheckEvent,
+  type BotCheckRecord,
+  type CrawlHold,
+  type CrawlState,
+  type CrawlStatus,
+  PAUSE_CAUSES,
+  PAUSE_REASONS,
+  type PauseCause,
+  type PauseReason,
+  type WaitReason,
 } from "./status.js";
 
 export type { WaitReason } from "./status.js";
@@ -99,27 +102,72 @@ type HitEntry = {
   dayCount: number;
 };
 
+type Pause =
+  | { reason: Exclude<PauseReason, "layout-changed">; at: number }
+  // No `cause` for one stored before causes were recorded.
+  | { reason: "layout-changed"; at: number; cause?: PauseCause; path?: string; savedAs?: string };
+
+/** What the latest Bot check still asks of the crawl. */
+type Guard =
+  | { phase: "clear" }
+  // Stays past `until`, until the probe after it is answered or a Resume ends it, so its level is
+  // known meanwhile.
+  | { phase: "cooldown"; until: number; level: number; needsResume: boolean }
+  // A Resume ended the Cooldown: the next request is the probe.
+  | { phase: "probe" }
+  | { phase: "half-budget"; until: number };
+
 /** Pacing and the stops share one entry so one write advances both. */
 type EngineState = {
   nextRequestAt: number;
   sessionCount: number;
-  paused?: {
-    reason: PauseReason;
-    /** A layout change only, and not one stored before causes were recorded. */
-    cause?: PauseCause;
-    at: number;
-    path?: string;
-    savedAs?: string;
-  };
-  /** Kept until the probe after it is answered (or a Resume), so its level is known meanwhile. */
-  cooldown?: { until: number; level: number; needsResume: boolean };
+  pause: Pause | null;
+  guard: Guard;
   /** Oldest first. */
   hits: HitEntry[];
   lastBotCheck?: HitEntry;
-  /** A Resume ended the Cooldown: the next request is the probe. */
-  probe: boolean;
-  halfBudgetUntil?: number;
 };
+
+const storedHit = z.object({
+  at: z.number(),
+  path: z.string(),
+  marker: z.enum(BOT_CHECK_MARKERS),
+  hourCount: z.number(),
+  dayCount: z.number(),
+});
+
+// The flat keys older images read. What does not parse falls back to a stop a Resume lifts, never
+// to fewer stops: a malformed value must not let the crawler send.
+const storedState = z
+  .object({
+    nextRequestAt: z.number().catch(0),
+    sessionCount: z.number().catch(0),
+    paused: z
+      .union([
+        z.object({
+          reason: z.literal("layout-changed"),
+          at: z.number(),
+          cause: z.enum(PAUSE_CAUSES).optional().catch(undefined),
+          path: z.string().optional().catch(undefined),
+          savedAs: z.string().optional().catch(undefined),
+        }),
+        z.object({ reason: z.enum(PAUSE_REASONS).exclude(["layout-changed"]), at: z.number() }),
+      ])
+      .catch(({ input }): Pause => {
+        const at = (input as { at?: unknown } | null)?.at;
+        return { reason: "user", at: typeof at === "number" && Number.isFinite(at) ? at : 0 };
+      })
+      .optional(),
+    cooldown: z
+      .object({ until: z.number(), level: z.number().int().min(1), needsResume: z.boolean() })
+      .catch({ until: 0, level: 1, needsResume: true })
+      .optional(),
+    hits: z.array(storedHit).catch([]),
+    lastBotCheck: storedHit.optional().catch(undefined),
+    probe: z.boolean().catch(false),
+    halfBudgetUntil: z.number().optional().catch(undefined),
+  })
+  .catch({ nextRequestAt: 0, sessionCount: 0, hits: [], probe: false });
 
 export type CapSettings = Pick<CrawlSettings["pacing"], "hourlyCap" | "dailyCap">;
 
@@ -130,29 +178,34 @@ export type CapsInForce = {
   halfBudgetUntil: number | null;
 };
 
-const halfBudgetUntilAt = (now: number, state: EngineState): number | null =>
-  state.halfBudgetUntil !== undefined && now < state.halfBudgetUntil ? state.halfBudgetUntil : null;
-
-function probePending(state: EngineState, now: number): boolean {
-  const c = state.cooldown;
-  return state.probe || (c !== undefined && now >= c.until && !c.needsResume);
+function probePending({ guard }: EngineState, now: number): boolean {
+  return (
+    guard.phase === "probe" ||
+    (guard.phase === "cooldown" && now >= guard.until && !guard.needsResume)
+  );
 }
 
-const coolingAt = (state: EngineState, now: number): boolean =>
-  state.cooldown !== undefined && now < state.cooldown.until;
+const coolingUntil = ({ guard }: EngineState, now: number): number | null =>
+  guard.phase === "cooldown" && now < guard.until ? guard.until : null;
 
 function holdsOf(state: EngineState): CrawlHold[] {
   const holds: CrawlHold[] = [];
-  if (state.paused) holds.push(state.paused.reason === "user" ? "paused" : state.paused.reason);
-  if (state.cooldown?.needsResume) holds.push("needs-resume");
+  if (state.pause !== null)
+    holds.push(state.pause.reason === "user" ? "paused" : state.pause.reason);
+  if (state.guard.phase === "cooldown" && state.guard.needsResume) holds.push("needs-resume");
   return holds;
 }
 
 const holdReason = (state: EngineState): CrawlHold | undefined => holdsOf(state)[0];
 
-function actionsOf(state: EngineState, now: number, wiping: boolean): CrawlStatus["actions"] {
-  const resume = !wiping && !coolingAt(state, now) && holdsOf(state).length > 0;
-  return { pause: state.paused === undefined && !resume, resume };
+function resumeRefusal(
+  state: EngineState,
+  now: number,
+  wiping: boolean,
+): { reason: "wipe-running" } | { reason: "bot-check-cooldown"; until: number } | null {
+  if (wiping) return { reason: "wipe-running" };
+  const until = coolingUntil(state, now);
+  return until === null ? null : { reason: "bot-check-cooldown", until };
 }
 
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -201,20 +254,35 @@ export function createCrawlEngine(deps: {
   markInterrupted(db);
 
   function loadState(): EngineState {
-    const raw = readJson(db, STATE_KEY) as Partial<EngineState> | undefined;
-    return {
-      ...raw,
-      nextRequestAt: raw?.nextRequestAt ?? 0,
-      sessionCount: raw?.sessionCount ?? 0,
-      hits: Array.isArray(raw?.hits) ? raw.hits : [],
-      probe: raw?.probe === true,
-    };
+    const { paused, cooldown, probe, halfBudgetUntil, ...rest } = storedState.parse(
+      readJson(db, STATE_KEY),
+    );
+    const guard: Guard =
+      cooldown !== undefined
+        ? { phase: "cooldown", ...cooldown }
+        : probe
+          ? { phase: "probe" }
+          : halfBudgetUntil !== undefined
+            ? { phase: "half-budget", until: halfBudgetUntil }
+            : { phase: "clear" };
+    return { ...rest, pause: paused ?? null, guard };
   }
 
-  const saveState = (state: EngineState, now: number) => writeJson(db, STATE_KEY, state, now);
+  function saveState({ pause, guard, ...rest }: EngineState, now: number): void {
+    const stored = {
+      ...rest,
+      ...(pause !== null && { paused: pause }),
+      ...(guard.phase === "cooldown" && {
+        cooldown: { until: guard.until, level: guard.level, needsResume: guard.needsResume },
+      }),
+      probe: guard.phase === "probe",
+      ...(guard.phase === "half-budget" && { halfBudgetUntil: guard.until }),
+    };
+    writeJson(db, STATE_KEY, stored, now);
+  }
 
-  function capsAt(now: number, s: CapSettings, state: EngineState): CapsInForce {
-    const until = halfBudgetUntilAt(now, state);
+  function capsAt(now: number, s: CapSettings, { guard }: EngineState): CapsInForce {
+    const until = guard.phase === "half-budget" && now < guard.until ? guard.until : null;
     const half = until !== null;
     return {
       hourly: half ? Math.max(1, Math.floor(s.hourlyCap / 2)) : s.hourlyCap,
@@ -237,7 +305,7 @@ export function createCrawlEngine(deps: {
     const dayEnd = berlinDayStart(now, 1);
     const daily = requestCount(db, berlinDayStart(now), dayEnd) >= caps.daily ? dayEnd : 0;
 
-    const cooldown = state.cooldown !== undefined ? state.cooldown.until : 0;
+    const cooldown = state.guard.phase === "cooldown" ? state.guard.until : 0;
     const hold = holdReason(state) === undefined ? 0 : Number.POSITIVE_INFINITY;
 
     return { gap, hourly, daily, cooldown, hold };
@@ -271,18 +339,17 @@ export function createCrawlEngine(deps: {
     const ladderMs = (COOLDOWN_LADDER_HOURS[index] as number) * HOUR;
     const requestedMs = Math.min((retryAfterSeconds ?? 0) * 1000, MAX_RETRY_AFTER_MS);
     const cooldown = {
+      phase: "cooldown" as const,
       until: hit.at + Math.max(ladderMs, requestedMs),
       level: index + 1,
       needsResume: earlier.some((h) => hit.at - h.at <= DAY),
     };
-    const { halfBudgetUntil: _ended, ...rest } = state;
     const next: EngineState = {
-      ...rest,
+      ...state,
       sessionCount: 0,
       hits: [...earlier, hit],
       lastBotCheck: hit,
-      cooldown,
-      probe: false,
+      guard: cooldown,
     };
     return { state: next, cooldown };
   }
@@ -292,7 +359,7 @@ export function createCrawlEngine(deps: {
     state: EngineState,
     pacing: CrawlSettings["pacing"],
   ): CrawlState {
-    if (coolingAt(state, now)) return "cooling-down";
+    if (coolingUntil(state, now) !== null) return "cooling-down";
     const hold = holdReason(state);
     if (hold !== undefined) return hold;
     const active = nextActiveInstant(now, pacing.activeHours.start, pacing.activeHours.end);
@@ -323,28 +390,34 @@ export function createCrawlEngine(deps: {
     const caps = capsAt(now, pacing, state);
     const counts = countsAt(now);
     const next = nextRequestAt(now, pacing, state);
+    const { pause, guard } = state;
+    const holds = holdsOf(state);
+    const refusal = resumeRefusal(state, now, wipeRunning);
+    const resume = refusal === null && holds.length > 0;
+    const layout = pause !== null && pause.reason === "layout-changed" ? pause : undefined;
     return {
       state: currentState(now, state, pacing),
       cooldown:
-        state.cooldown === undefined
+        guard.phase === "cooldown"
+          ? { until: iso(guard.until), level: guard.level, needsResume: guard.needsResume }
+          : null,
+      paused:
+        pause === null
           ? null
           : {
-              until: iso(state.cooldown.until),
-              level: state.cooldown.level,
-              needsResume: state.cooldown.needsResume,
+              reason: pause.reason,
+              cause: layout?.cause ?? null,
+              since: iso(pause.at),
+              path: layout?.path ?? null,
+              savedAs: rawPageStill(layout?.savedAs),
             },
-      paused: state.paused
-        ? {
-            reason: state.paused.reason,
-            cause: state.paused.cause ?? null,
-            since: iso(state.paused.at),
-            path: state.paused.path ?? null,
-            savedAs: rawPageStill(state.paused.savedAs),
-          }
-        : null,
-      holds: holdsOf(state),
+      holds,
       nextRequest: { at: next.at === null ? null : iso(next.at), waitingFor: next.waitingFor },
-      actions: actionsOf(state, now, wipeRunning),
+      actions: {
+        pause: pause === null && !resume,
+        resume,
+        resumeRefusedBy: refusal === null ? null : refusal.reason,
+      },
       halfBudgetUntil: caps.halfBudgetUntil === null ? null : iso(caps.halfBudgetUntil),
       counts: {
         hour: { used: counts.hour, cap: caps.hourly },
@@ -418,14 +491,14 @@ export function createCrawlEngine(deps: {
     }
     db.$client
       .transaction(() => {
-        const paused = {
+        const pause = {
           reason: "layout-changed" as const,
           cause,
           at,
           path,
           ...(savedAs !== undefined && { savedAs }),
         };
-        saveState({ ...loadState(), paused }, at);
+        saveState({ ...loadState(), pause }, at);
       })
       .immediate();
   }
@@ -473,8 +546,10 @@ export function createCrawlEngine(deps: {
           });
         } else if (probePending(state, done)) {
           if (response !== undefined && response.status >= 200 && response.status < 300) {
-            const { cooldown: _over, ...rest } = state;
-            state = { ...rest, probe: false, halfBudgetUntil: done + HALF_BUDGET_HOURS * HOUR };
+            state = {
+              ...state,
+              guard: { phase: "half-budget", until: done + HALF_BUDGET_HOURS * HOUR },
+            };
           } else {
             const { pacing } = loadCrawlSettings(db);
             const breakMs = drawBetween(
@@ -565,11 +640,15 @@ export function createCrawlEngine(deps: {
     if (allowedAt <= now) return undefined;
 
     const hold = holdReason(state);
-    if (state.cooldown !== undefined && coolingAt(state, now)) {
+    const cooling = coolingUntil(state, now);
+    if (cooling !== null) {
       // While a Resume is also owed, the Cooldown's end is the next thing that happens: the loop
       // wakes then to say so.
-      const until = hold === undefined ? allowedAt : state.cooldown.until;
-      return { state: "waiting", reason: "cooldown", until };
+      return {
+        state: "waiting",
+        reason: "cooldown",
+        until: hold === undefined ? allowedAt : cooling,
+      };
     }
     if (hold !== undefined) {
       return { state: "waiting", reason: hold, until: Number.POSITIVE_INFINITY };
@@ -586,6 +665,25 @@ export function createCrawlEngine(deps: {
   }
 
   type Claim = { send: { job: Job; logId: number } } | { result: StepResult };
+
+  /**
+   * A `wiped` pause with no wipe at or after it (process stopped mid-wait, or the wipe failed before
+   * it deleted anything) becomes a plain Pause, so the status never claims data was deleted that is
+   * still there.
+   */
+  function settleWipe(lastWipeAt: number | undefined): boolean {
+    const now = clock();
+    return db.$client
+      .transaction(() => {
+        const state = loadState();
+        const { pause } = state;
+        if (pause === null || pause.reason !== "wiped") return false;
+        if (lastWipeAt !== undefined && lastWipeAt >= pause.at) return false;
+        saveState({ ...state, pause: { reason: "user", at: pause.at } }, now);
+        return true;
+      })
+      .immediate();
+  }
 
   let pausedForDisk = false;
   /** In memory only, like the wipe itself. */
@@ -604,8 +702,8 @@ export function createCrawlEngine(deps: {
     const { pacing } = loadCrawlSettings(db);
 
     let state = loadState();
-    if (state.paused === undefined && isDiskNearlyFull()) {
-      state = { ...state, paused: { reason: "disk-full", at: now } };
+    if (state.pause === null && isDiskNearlyFull()) {
+      state = { ...state, pause: { reason: "disk-full", at: now } };
       saveState(state, now);
       pausedForDisk = true;
     }
@@ -739,9 +837,8 @@ export function createCrawlEngine(deps: {
       db.$client
         .transaction(() => {
           const state = loadState();
-          if (state.paused === undefined) {
-            saveState({ ...state, paused: { reason: "user", at: now } }, now);
-          }
+          if (state.pause === null)
+            saveState({ ...state, pause: { reason: "user", at: now } }, now);
         })
         .immediate();
       publishStatus();
@@ -751,13 +848,11 @@ export function createCrawlEngine(deps: {
       const now = clock();
       const result = db.$client
         .transaction((): ResumeResult => {
-          if (wipeRunning) return { ok: false, reason: "wipe-running" };
           const state = loadState();
-          if (state.cooldown !== undefined && coolingAt(state, now)) {
-            return { ok: false, reason: "bot-check-cooldown", until: state.cooldown.until };
-          }
-          const { paused: _paused, cooldown, ...rest } = state;
-          saveState({ ...rest, probe: state.probe || cooldown !== undefined }, now);
+          const refusal = resumeRefusal(state, now, wipeRunning);
+          if (refusal !== null) return { ok: false, ...refusal };
+          const guard: Guard = state.guard.phase === "cooldown" ? { phase: "probe" } : state.guard;
+          saveState({ ...state, pause: null, guard }, now);
           return { ok: true };
         })
         .immediate();
@@ -766,13 +861,12 @@ export function createCrawlEngine(deps: {
     },
 
     /** Callers must not run two at once. */
-    async whileWiping<T>(work: () => T): Promise<T> {
+    async whileWiping<T>(work: () => T, lastWipeAt: () => number | undefined): Promise<T> {
       const now = clock();
       const pauseForWipe = () =>
         db.$client
           .transaction(() => {
-            const { paused: _paused, ...rest } = loadState();
-            saveState({ ...rest, paused: { reason: "wiped", at: now } }, now);
+            saveState({ ...loadState(), pause: { reason: "wiped", at: now } }, now);
           })
           .immediate();
       wipeRunning = true;
@@ -785,27 +879,13 @@ export function createCrawlEngine(deps: {
         return work();
       } finally {
         wipeRunning = false;
+        settleWipe(lastWipeAt());
         publishStatus();
       }
     },
 
-    /**
-     * A `wiped` pause with no wipe at or after it (process stopped mid-wait, or the delete rolled
-     * back) becomes a plain Pause, so the status never claims data was deleted that is still there.
-     */
     settleWipePause(lastWipeAt: number | undefined): void {
-      const now = clock();
-      const changed = db.$client
-        .transaction(() => {
-          const state = loadState();
-          const paused = state.paused;
-          if (paused?.reason !== "wiped") return false;
-          if (lastWipeAt !== undefined && lastWipeAt >= paused.at) return false;
-          saveState({ ...state, paused: { reason: "user", at: paused.at } }, now);
-          return true;
-        })
-        .immediate();
-      if (changed) publishStatus();
+      if (settleWipe(lastWipeAt)) publishStatus();
     },
 
     /** A loop stopped but still asleep is kept going rather than joined by a second one. */

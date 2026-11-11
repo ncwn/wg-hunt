@@ -268,7 +268,7 @@ export function createBatchState(deps: {
         move.to === "in_progress"
           ? { state: move.to, providerBatchId: move.providerBatchId }
           : move.to === "canceling"
-            ? { state: move.to, canceledAt: now() }
+            ? { state: move.to }
             : { state: move.to, endReason: move.reason, endedAt: now() };
       const moved = db
         .update(analysisBatches)

@@ -54,6 +54,27 @@ describe("Settings: what a seeker changes", () => {
     expect(screen.getByText(/It stays paused after that until you resume it/)).toBeTruthy();
   });
 
+  it("can't switch hunting on during a break that needs a Resume after it", async () => {
+    const server = fakeServer({
+      signedIn: true,
+      crawl: crawlStatus({
+        state: "cooling-down",
+        cooldown: { until: "2026-06-10T14:20:00.000Z", level: 2, needsResume: true },
+      }),
+    });
+    expect(server.state.crawl.actions).toEqual({
+      pause: true,
+      resume: false,
+      resumeRefusedBy: "bot-check-cooldown",
+    });
+    renderDashboard(server.fetch, "/settings");
+    const toggle = (await screen.findByRole("switch", {
+      name: "Keep hunting",
+    })) as HTMLButtonElement;
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("false"));
+    expect(toggle.disabled).toBe(true);
+  });
+
   it("saves quiet hours as the night around the active hours", async () => {
     const { server, user } = await openSettings();
     const from = await screen.findByLabelText("Quiet hours start");

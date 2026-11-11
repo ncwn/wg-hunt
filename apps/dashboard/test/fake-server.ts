@@ -24,7 +24,11 @@ function derive(base: Omit<CrawlStatus, Derived>, given: Partial<CrawlStatus>): 
     ...base,
     holds,
     nextRequest,
-    actions: given.actions ?? { pause: base.paused === null && !resume, resume },
+    actions: given.actions ?? {
+      pause: base.paused === null && !resume,
+      resume,
+      resumeRefusedBy: cooling ? "bot-check-cooldown" : null,
+    },
   };
 }
 

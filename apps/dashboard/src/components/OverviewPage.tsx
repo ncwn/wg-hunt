@@ -215,12 +215,11 @@ function HuntCard() {
       </p>
     );
 
-  const canAct = hunt.canResume || hunt.canPause;
   return (
     <StatusCard
       state={hunt.state}
-      action={canAct ? (hunt.canResume ? "Resume" : "Pause") : false}
-      onAction={() => void acting.run(hunt.canResume ? resume : pause)}
+      action={hunt.control === null ? false : hunt.control === "resume" ? "Resume" : "Pause"}
+      onAction={() => void acting.run(hunt.control === "resume" ? resume : pause)}
       busy={acting.busy}
     >
       <p>{hunt.sentence}</p>

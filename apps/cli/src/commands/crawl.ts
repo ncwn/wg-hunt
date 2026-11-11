@@ -18,7 +18,12 @@ function nextRequestText(status: CrawlStatus): string | undefined {
 function holdsText(status: CrawlStatus): string | undefined {
   // An older server sends no `holds`; its other rows still say as much.
   if (!status.holds?.length) return undefined;
-  const now = status.actions?.resume ? "Resume lifts them all" : "Resume once the Cooldown is over";
+  // An older server sends no `resumeRefusedBy`, so its refusal reads as a Cooldown.
+  const now = status.actions?.resume
+    ? "Resume lifts them all"
+    : status.actions?.resumeRefusedBy === "wipe-running"
+      ? "Resume once the deletion is done"
+      : "Resume once the Cooldown is over";
   return `${status.holds.join(", ")}; ${now}`;
 }
 

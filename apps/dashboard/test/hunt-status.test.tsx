@@ -392,7 +392,7 @@ describe("hunting status", () => {
         crawl: crawlStatus({
           state: "wiped",
           paused: { reason: "wiped", cause: null, since: UNTIL, path: null, savedAs: null },
-          actions: { pause: false, resume: false },
+          actions: { pause: false, resume: false, resumeRefusedBy: "wipe-running" },
         }),
       }).fetch,
     );
@@ -400,6 +400,35 @@ describe("hunting status", () => {
     expect(await c.findByText(/wg-hunt is deleting all offer data/)).toBeTruthy();
     const resume = c.queryByRole("button", { name: "Resume" }) as HTMLButtonElement | null;
     expect(resume === null || resume.disabled).toBe(true);
+  });
+
+  it("keeps a status heard while a Pause was on its way over the Pause's answer", async () => {
+    const server = fakeServer({ signedIn: true });
+    const live = fakeEventStream();
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { user } = renderDashboard(
+      async (request) => {
+        const answer = await server.fetch(request);
+        if (new URL(request.url).pathname === "/api/v1/crawl/pause") await held;
+        return answer;
+      },
+      "/",
+      live.stream,
+    );
+    const c = await card();
+    await user.click(await c.findByRole("button", { name: "Pause" }));
+    await live.emit(statusEvent({ state: "outside-hours" }));
+    expect(await c.findByRole("heading", { name: "Resting for the night" })).toBeTruthy();
+
+    await act(async () => {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(c.getByRole("heading", { name: "Resting for the night" })).toBeTruthy();
+    expect(c.queryByRole("heading", { name: "Hunting is paused" })).toBeNull();
   });
 
   it("rests outside the hours you set", async () => {

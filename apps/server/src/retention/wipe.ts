@@ -72,14 +72,12 @@ export async function wipeOfferData(deps: {
   dataDir: string;
   /** Epoch milliseconds. */
   clock: () => number;
-  crawl: Pick<CrawlEngine, "whileWiping" | "settleWipePause">;
+  crawl: Pick<CrawlEngine, "whileWiping">;
   polling: Pick<SearchPolling, "sync">;
   /** Runs inside the wipe's transaction, before anything is deleted. */
   onWipe?: () => void;
 }): Promise<WipeResult> {
   const { db, dataDir, clock, crawl, polling, onWipe } = deps;
-  // If the delete fails and rolls back, nothing was deleted, so the `wiped` pause gives way to a
-  // plain Pause.
   const work = () => {
     const now = clock();
     const countedFrom = Math.min(berlinDayStart(now), now - HOUR);
@@ -120,12 +118,5 @@ export async function wipeOfferData(deps: {
     compact(db);
     return deleted;
   };
-  return crawl.whileWiping(() => {
-    try {
-      return work();
-    } catch (err) {
-      crawl.settleWipePause(readWipeRecord(db)?.at);
-      throw err;
-    }
-  });
+  return crawl.whileWiping(work, () => readWipeRecord(db)?.at);
 }

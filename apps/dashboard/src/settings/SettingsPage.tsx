@@ -132,7 +132,7 @@ export function SettingsPage({
             <Toggle
               label="Keep hunting"
               checked={hunt?.on ?? false}
-              disabled={hunting.busy || !hunt || !(hunt.canPause || hunt.canResume)}
+              disabled={hunting.busy || !hunt || hunt.control !== (hunt.on ? "pause" : "resume")}
               onChange={toggleHunting}
             />
           }

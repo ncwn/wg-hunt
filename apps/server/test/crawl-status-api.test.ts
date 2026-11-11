@@ -65,7 +65,7 @@ describe("GET /crawl", () => {
       holds: [],
       // The gap holds the next request back, but the only queued job is due later still.
       nextRequest: { at: new Date(MORNING + HOUR).toISOString(), waitingFor: "gap" },
-      actions: { pause: true, resume: false },
+      actions: { pause: true, resume: false, resumeRefusedBy: null },
       halfBudgetUntil: null,
       counts: { hour: { used: 1, cap: 30 }, day: { used: 1, cap: 300 } },
       nextJobs: [
@@ -109,6 +109,19 @@ describe("POST /crawl/pause and /crawl/resume", () => {
       cooldown: { until: new Date(MORNING + 2 * HOUR).toISOString(), level: 1, needsResume: false },
       lastBotCheck: { marker: "checkform", hourCount: 1, dayCount: 1 },
     });
+  });
+
+  it("names the problem a Resume would be refused with: none while running, the Cooldown's during one", async () => {
+    const { runtime, call, clock } = boot([{ status: 200, body: cubaPage() }]);
+    expect((await (await call("/crawl")).json()).actions).toMatchObject({ resumeRefusedBy: null });
+    runtime.crawl.enqueue({ kind: "poll", path: "/wg-zimmer-in-Berlin.8.0.1.0.html" });
+    await runtime.crawl.step();
+    clock.now += HOUR;
+
+    const { actions } = await (await call("/crawl")).json();
+    expect(actions).toEqual({ pause: true, resume: false, resumeRefusedBy: "bot-check-cooldown" });
+    const refused = await call("/crawl/resume", { method: "POST" });
+    expect((await refused.json()).type).toBe(actions.resumeRefusedBy);
   });
 
   it("need the access token", async () => {
