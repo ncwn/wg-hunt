@@ -35,7 +35,7 @@ function RecheckNotice({ recheck }: { recheck: Offer["recheck"] }) {
     const retry =
       recheck.retryAfter === null
         ? ""
-        : ` Automatic Rechecks try again after ${formatWhen(recheck.retryAfter)}.`;
+        : ` No automatic Recheck before ${formatWhen(recheck.retryAfter)}.`;
     return <Notice tone="alarm">The last Recheck got no usable page.{retry}</Notice>;
   }
   return null;

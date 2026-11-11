@@ -118,7 +118,7 @@ describe("the Recheck notice", () => {
     expect(readsOf(requests, id)).toBe(reads);
   });
 
-  it("raises an alarm with the retry time when the last Recheck got no usable page", async () => {
+  it("raises an alarm with the time automatic Rechecks hold off until, when the last one got no usable page", async () => {
     const retryAfter = new Date(Date.now() + 6 * 60 * MINUTE).toISOString();
     const { user } = await openOffers([PARK], "/offers/all", undefined, (fetch) =>
       recheckAs(() => ({
@@ -132,9 +132,7 @@ describe("the Recheck notice", () => {
 
     const alarm = await detail().findByRole("alert");
     expect(alarm.textContent).toContain("The last Recheck got no usable page.");
-    expect(alarm.textContent).toContain(
-      `Automatic Rechecks try again after ${formatWhen(retryAfter)}.`,
-    );
+    expect(alarm.textContent).toContain(`No automatic Recheck before ${formatWhen(retryAfter)}.`);
   });
 
   it("shows a Recheck already queued when the pane opens, without pressing anything", async () => {
