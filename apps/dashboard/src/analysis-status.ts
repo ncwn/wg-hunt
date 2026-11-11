@@ -14,6 +14,9 @@ const day = (iso: string | null) =>
   iso === null
     ? "next month"
     : new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+/** Not an error kind: the call was made, and the database took no write of its outcome. */
+const OUTCOME_NOT_STORED = "outcome_not_stored";
+
 const because = (reason: string | null) => (reason === null ? "" : ` (${reason})`);
 
 function toTryAgain(s: AnalysisStatus): string {
@@ -49,7 +52,9 @@ export function analysisNote(s: AnalysisStatus): string | null {
     case "retry-at":
       return `Couldn't read this ad${because(s.reason)}. Trying again ${time(s.at)}.`;
     case "needs-click":
-      return `Couldn't read this ad${because(s.reason)}. ${toTryAgain(s)}`;
+      return s.reason === OUTCOME_NOT_STORED
+        ? `This ad was read, but the reading could not be saved. ${toTryAgain(s)}`
+        : `Couldn't read this ad${because(s.reason)}. ${toTryAgain(s)}`;
     case "waiting-for-page":
       return "There is no readable copy of the ad yet. Recheck it to fetch one.";
     case "waiting-for-key":
@@ -61,6 +66,10 @@ export function analysisNote(s: AnalysisStatus): string | null {
     case "waiting-for-in-flight":
       return "Not read yet: ads being read right now hold the rest of the monthly limit. This one is read once they're done.";
     case "kept-previous":
+      // The seeker asked for this reading, and nothing tries it again by itself.
+      if (s.reason === OUTCOME_NOT_STORED) {
+        return `The last reading could not be saved; the earlier one is shown. ${toTryAgain(s)}`;
+      }
       // Trying again is the seeker's choice here; only a blocker in the way is worth saying.
       return s.next === "reanalyze"
         ? `The last reading failed${because(s.reason)}; the earlier one is shown.`

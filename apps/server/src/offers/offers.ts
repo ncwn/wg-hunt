@@ -304,7 +304,8 @@ const isWebAddress = (text: unknown): text is string =>
 export type Offers = ReturnType<typeof createOffers>;
 
 export type AnalysisContext = {
-  reading: () => number | undefined;
+  reading: (offerId: number) => boolean;
+  unstored: (offerId: number) => boolean;
   cap: () => AnalysisStatusInput["cap"];
   noRoom: () => ReadonlySet<number>;
   announce: (offerId: number) => void;
@@ -315,7 +316,6 @@ type AnalysisSnapshot = {
   key: ReturnType<typeof keyState>;
   cap: AnalysisStatusInput["cap"];
   noRoom: ReadonlySet<number>;
-  reading: number | undefined;
   version: string;
   now: number;
 };
@@ -1345,7 +1345,8 @@ export function createOffers(deps: {
 
   /** Until the analysis worker attaches, nothing is in flight and the cap is open. */
   let analysisContext: AnalysisContext = {
-    reading: () => undefined,
+    reading: () => false,
+    unstored: () => false,
     cap: () => ({ state: "ok", resetsAt: null }),
     noRoom: () => new Set(),
     announce: () => {},
@@ -1375,7 +1376,6 @@ export function createOffers(deps: {
       key: keyState(db),
       cap: analysisContext.cap(),
       noRoom: analysisContext.noRoom(),
-      reading: analysisContext.reading(),
       version: analysisVersion({ model: settings.model, effort: settings.effort }),
       now: clock(),
     };
@@ -1394,7 +1394,8 @@ export function createOffers(deps: {
       failure: job.failure,
       contentHash: job.contentHash,
       held: at.held.get(row.id) ?? null,
-      reading: at.reading === row.id,
+      reading: analysisContext.reading(row.id),
+      unstored: analysisContext.unstored(row.id),
       owed: job.reanalyzeRequestedAt !== null,
       noRoom: at.noRoom.has(row.id),
       key: at.key,

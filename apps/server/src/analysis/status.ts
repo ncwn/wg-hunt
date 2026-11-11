@@ -57,6 +57,11 @@ export type AnalysisStatusInput = {
   contentHash: string | null;
   held: { stage: 1 | 2; since: Date } | null;
   reading: boolean;
+  /**
+   * Its call went out and its outcome could not be stored, so the worker sends it again only after
+   * a new click.
+   */
+  unstored: boolean;
   /** A Re-analyse click answered `202` whose read has not ended. */
   owed: boolean;
   /** The worker last found that what is left of the cap pays for neither of this Offer's calls. */
@@ -66,6 +71,9 @@ export type AnalysisStatusInput = {
   /** Epoch ms. */
   now: number;
 };
+
+/** A `reason` that is no error kind: nothing failed that a stored failure could name. */
+const OUTCOME_NOT_STORED = "outcome_not_stored";
 
 const NEXT: Record<AnalysisStatusKind, AnalysisNext> = {
   reading: "wait",
@@ -164,6 +172,11 @@ function statusOf(input: AnalysisStatusInput): AnalysisStatus {
     return input.held.stage === 2 && input.provisional
       ? make("provisional", { at: input.held.since })
       : make("in-batch", { at: input.held.since });
+  }
+  if (input.unstored) {
+    return make(input.state === "analyzed" ? "kept-previous" : "needs-click", {
+      reason: OUTCOME_NOT_STORED,
+    });
   }
   if (input.owed) return blocker(input) ?? make("queued");
   const failure = input.failure;

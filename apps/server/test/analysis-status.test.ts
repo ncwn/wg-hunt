@@ -1,5 +1,5 @@
 import { PAGE_FAILURE_KINDS, ProviderError } from "@wg-hunt/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type AnalysisStatusInput, deriveAnalysisStatus } from "../src/analysis/status.js";
 import {
   anmeldungOk,
@@ -195,6 +195,43 @@ describe("an Offer's analysis status", () => {
     }
   });
 
+  it("stops showing a read whose start could not be announced, and reads it at the next cycle", async () => {
+    const h = boot();
+    await setKey(h);
+    const [offer] = await crawlOffers(h, 1);
+    const id = offer?.id as number;
+    const { events } = h.runtime;
+    const publish = events.publish;
+    let broken = true;
+    events.publish = (type, data) => {
+      const reading =
+        type === "analysis-progress" &&
+        (data as { status: { status: string } }).status.status === "reading";
+      if (broken && reading) {
+        broken = false;
+        throw new Error("synthetic: the announcement failed");
+      }
+      publish(type, data);
+    };
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect((await h.call("POST", `/offers/${id}/reanalyze`)).status).toBe(202);
+    await h.runtime.analysis.idle();
+    log.mockRestore();
+
+    expect(broken).toBe(false);
+    expect(h.requests).toHaveLength(1);
+    expect((await offerOf(h, id)).analysisStatus).toMatchObject({
+      status: "queued",
+      willRead: true,
+    });
+
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+    expect(h.requests).toHaveLength(2);
+    expect((await offerOf(h, id)).analysisStatus.status).toBe("analyzed");
+  });
+
   it("calls a Stale Offer stale and never counts it as read", async () => {
     const h = boot();
     await setKey(h);
@@ -244,6 +281,7 @@ describe("deriveAnalysisStatus", () => {
     contentHash: "h1",
     held: null,
     reading: false,
+    unstored: false,
     owed: false,
     noRoom: false,
     key: "present",
@@ -491,6 +529,41 @@ describe("deriveAnalysisStatus", () => {
       "retry-at",
     );
     expect(at({ state: "analyzed", ...noRoom }).status).toBe("analyzed");
+  });
+
+  it("says a call whose outcome was not stored waits for a click, whatever else the Offer is owed", () => {
+    const unstored = { unstored: true };
+    const lost = { reason: "outcome_not_stored", next: "reanalyze", at: null, willRead: false };
+    for (const state of [
+      {},
+      { owed: true },
+      { noRoom: true },
+      { state: "failed" as const, failure: failure("overloaded") },
+      { state: "failed" as const, failure: failure("truncated"), owed: true },
+    ]) {
+      expect(at({ ...state, ...unstored })).toEqual({ status: "needs-click", ...lost });
+    }
+    for (const state of [
+      { state: "analyzed" as const, owed: true },
+      { state: "analyzed" as const, owed: true, olderVersion: true },
+      { state: "analyzed" as const, owed: true, failure: failure("refused") },
+      { state: "analyzed" as const, owed: true, provisional: true },
+    ]) {
+      expect(at({ ...state, ...unstored })).toEqual({ status: "kept-previous", ...lost });
+    }
+
+    expect(at({ ...unstored, key: "absent" })).toMatchObject({
+      status: "needs-click",
+      next: "add-key",
+    });
+    expect(at({ ...unstored, key: "refused" }).next).toBe("replace-key");
+    expect(
+      at({ ...unstored, cap: { state: "reached", resetsAt: base.cap.resetsAt } }),
+    ).toMatchObject({ status: "needs-click", next: "raise-cap", at: base.cap.resetsAt });
+    expect(at({ ...unstored, stale: true }).status).toBe("stale");
+    expect(at({ ...unstored, held: { stage: 1, since: new Date(base.now) } }).status).toBe(
+      "in-batch",
+    );
   });
 
   it("says what a click or a run waits for when the key or the cap would refuse it now", () => {
