@@ -576,6 +576,37 @@ describe("Settings › Advanced: drafts survive saves made around them", () => {
     expect(screen.getByLabelText("Effort").textContent).toContain("low");
   });
 
+  it("holds Revert while the reading-model save is on its way", async () => {
+    const server = realServer({ signedIn: true });
+    await server.ready;
+    const hold = holdingFetch(server, "/settings/analysis");
+    const { user } = renderDashboard(hold.fetch, "/settings");
+    await openAdvanced(user);
+    await screen.findByLabelText("Model");
+    const batches = screen.getByLabelText("Always read in batches");
+
+    await user.click(batches);
+    await user.click(screen.getByRole("button", { name: "Save reading model" }));
+    await waitFor(() => expect(hold.sent()).toBe(1));
+    expect((screen.getByRole("button", { name: "Revert" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    await user.click(screen.getByRole("button", { name: "Revert" }));
+    hold.release();
+
+    expect(await screen.findByText("Saved.")).toBeTruthy();
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(batches.getAttribute("aria-checked")).toBe("true");
+    expect((await stored(server, "/settings/analysis")).batchOnly).toBe(true);
+
+    await user.click(screen.getByLabelText("Second read when unsure"));
+    const revert = screen.getByRole("button", { name: "Revert" }) as HTMLButtonElement;
+    expect(revert.disabled).toBe(false);
+    await user.click(revert);
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(batches.getAttribute("aria-checked")).toBe("true");
+  });
+
   function failingReads(server: Server, path: string) {
     const reads = { failing: false };
     const fetch = async (request: Request) =>

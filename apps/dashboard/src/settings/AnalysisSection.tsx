@@ -440,6 +440,7 @@ function Form({
           <Button
             variant="ghost"
             size="sm"
+            disabled={saving.busy}
             onClick={() => {
               setForm(saved);
               settle();
