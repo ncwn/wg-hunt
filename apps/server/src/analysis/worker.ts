@@ -222,30 +222,38 @@ export function createAnalysis(deps: {
         request,
         options.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))),
       );
-      // A merge during the call may have given the Offer a further read of its words, which this
-      // answer would overwrite or escalate again. The call is metered all the same.
-      const now = offers.analysisJob(id);
-      if (now === undefined || now.readDepth > job.readDepth) {
+      const hash = contentHash(page.text);
+      // A merge during the call may have moved the room to another Offer: the answer is its, a
+      // click it took over included. Stored where that Offer shows other words, has read further
+      // into these, or waits on a batch's answer for them, it would overwrite a result, escalate
+      // a second time or be overwritten in turn. The call is metered all the same.
+      const holder = offers.mergedInto(id) ?? id;
+      const now = offers.analysisJob(holder);
+      if (
+        now === undefined ||
+        (now.contentHash !== null && now.contentHash !== hash) ||
+        now.readDepth > job.readDepth ||
+        batch.heldBy(holder) === "batch"
+      ) {
         phases.set(id, "taken");
-        announce(id);
+        announceAll([id, holder]);
         return "done";
       }
       const step = readFirst(args, response);
       const analyzedAt = new Date(clock()).toISOString();
-      const hash = contentHash(page.text);
       if (step.kind === "done") {
         offers.saveAnalysis(
-          id,
+          holder,
           step.result.facts,
           makeRun({ plan, result: step.result, analyzedAt, contentHash: hash }),
         );
       } else {
         // The escalation is read as a batch, at half the price.
         const escalate = () =>
-          batch.enqueueEscalation({ offerId: id, contentHash: hash, plan, state: step.state });
-        if (job.state !== "analyzed") {
+          batch.enqueueEscalation({ offerId: holder, contentHash: hash, plan, state: step.state });
+        if (now.state !== "analyzed") {
           offers.saveAnalysis(
-            id,
+            holder,
             step.provisional.facts,
             makeRun({ plan, result: step.provisional, analyzedAt, contentHash: hash }),
             { carry: step.state, plan, contentHash: hash },
@@ -257,13 +265,13 @@ export function createAnalysis(deps: {
           // both and never neither.
           db.$client.transaction(() => {
             escalate();
-            offers.handOverReanalysis(id);
+            offers.handOverReanalysis(holder);
           })();
         }
         batch.kick();
       }
       phases.set(id, "taken");
-      announce(id);
+      announceAll([id, holder]);
       return "done";
     } catch (error) {
       // Its call went out and nothing is stored yet: an error that leaves this function from

@@ -2,7 +2,7 @@ import type { AnalysisProvider, BatchRequest } from "@wg-hunt/core";
 import { fakeBatchProvider, fakeProvider } from "@wg-hunt/core/analysis/testing";
 import { describe, expect, it, vi } from "vitest";
 import { carryWaiting } from "../src/analysis/batch-state.js";
-import { analysisItems, analysisUsage, offers } from "../src/db/schema.js";
+import { analysisItems, analysisUsage, offerAds, offers } from "../src/db/schema.js";
 import {
   anmeldungOk,
   type Boot,
@@ -324,43 +324,190 @@ describe("a merge into an Offer still waiting on words the absorbed one has fini
   });
 });
 
-describe("a merge while the survivor's realtime read is out", () => {
-  it("drops the answer when the absorbed Offer had already read the same words", async () => {
-    const scripted = fakeProvider([anmeldungOk, doubtful]);
+describe("a merge while a realtime read is out", () => {
+  const isEscalation = (request: BatchRequest) => request.request.effort === "high";
+  const usageRows = (h: Boot, batch: boolean) =>
+    h.runtime.db
+      .select()
+      .from(analysisUsage)
+      .all()
+      .filter((row) => row.batch === batch).length;
+  const adHash = (h: Boot, adId: number) =>
+    h.runtime.db
+      .select()
+      .from(offerAds)
+      .all()
+      .find((ad) => ad.adId === String(adId))?.contentHash;
+
+  /** The realtime call numbered `held` (from 0) waits for `release`. */
+  function heldRealtime(script: Parameters<typeof fakeProvider>[0], held: number) {
+    const scripted = fakeProvider(script);
     let arrived = 0;
-    let open = () => {};
+    let release = () => {};
     const gate = new Promise<void>((resolve) => {
-      open = resolve;
+      release = resolve;
     });
     const provider: AnalysisProvider = {
       async analyse(request) {
-        if (arrived++ === 1) await gate;
+        if (arrived++ === held) await gate;
         return scripted.provider.analyse(request);
       },
     };
-    const h = boot({
-      sameProviders: { realtime: { ...scripted, provider }, batch: fakeBatchProvider([]) },
-    });
+    return {
+      realtime: { ...scripted, provider },
+      out: () => vi.waitFor(() => expect(arrived).toBeGreaterThan(held)),
+      release: () => release(),
+    };
+  }
+
+  /** One room posted twice with the same words, and the second post split off. */
+  async function postedTwice(h: Boot) {
     const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
     ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
     const room = await idOf(h, 9000001);
     const split = await h.json("POST", `/offers/${room}/split`, { adId: "9000002" });
-    const reading = split.body.id as number;
+    expect(split.status).toBe(201);
+    return { room, other: split.body.id as number };
+  }
+
+  it("drops the survivor's answer when the absorbed Offer had already read the same words", async () => {
+    const held = heldRealtime([anmeldungOk, doubtful], 1);
+    const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });
+    const { room, other: reading } = await postedTwice(h);
     await setKey(h);
     h.runtime.analysis.sweep();
-    await vi.waitFor(() => expect(arrived).toBe(2));
+    await held.out();
     const finished = (await offerOf(h, room)).analysis;
     expect(finished.analyzedAt).not.toBe(null);
 
     await merge(h, reading, room);
-    open();
+    held.release();
     await h.runtime.analysis.idle();
 
-    expect(scripted.requests).toHaveLength(2);
+    expect(held.realtime.requests).toHaveLength(2);
     const end = await offerOf(h, reading);
     expect(end.analysis).toEqual(finished);
     expect(end.analysisStatus.status).toBe("analyzed");
     expect(h.runtime.db.select().from(analysisItems).all()).toEqual([]);
+  });
+
+  it("stores a click's read on the Offer that took the click over, and sends the words no more often", async () => {
+    const held = heldRealtime([anmeldungOk], 0);
+    const h = boot({
+      size: 1,
+      sameProviders: {
+        realtime: held.realtime,
+        batch: fakeBatchProvider([doubtful, anmeldungOk, anmeldungOk]),
+      },
+    });
+    const { room, other } = await postedTwice(h);
+    await change(h, { batchOnly: true });
+    await setKey(h);
+    await h.runtime.analysis.idle();
+    await poll(h);
+    h.batch.complete("batch-1");
+    await poll(h);
+    h.batch.complete("batch-2");
+    await poll(h);
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 2, state: "submitted" }]);
+    const finished = (await offerOf(h, other)).analysis;
+    await click(h, other);
+    await held.out();
+
+    await merge(h, room, other);
+    expect(waiting(h)).toEqual([]);
+    expect(h.runtime.offers.analysisJob(room)?.reanalyzeRequestedAt).not.toBe(null);
+    h.clock.now += MINUTE;
+    held.release();
+    await h.runtime.analysis.idle();
+
+    const stored = await offerOf(h, room);
+    expect(stored.analysis.analyzedAt).not.toBe(finished.analyzedAt);
+    expect(stored.analysisStatus.status).toBe("analyzed");
+    expect(h.runtime.offers.analysisJob(room)?.reanalyzeRequestedAt).toBe(null);
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+    await poll(h);
+    const firstPasses = h.batch.submissions.flat().filter((request) => !isEscalation(request));
+    expect(held.realtime.requests.length + firstPasses.length).toBe(3);
+    expect(waiting(h)).toEqual([]);
+  });
+
+  it("stores the absorbed Offer's answer on a survivor that had read nothing", async () => {
+    const held = heldRealtime([anmeldungOk], 0);
+    const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });
+    const { room, other } = await postedTwice(h);
+    await setKey(h);
+    h.runtime.analysis.sweep();
+    await held.out();
+
+    await merge(h, other, room);
+    held.release();
+    await h.runtime.analysis.idle();
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+
+    expect(await statusOf(h, other)).toBe("analyzed");
+    expect(h.runtime.offers.analysisJob(other)?.wordsChanged).toBe(false);
+    expect(held.realtime.requests).toHaveLength(1);
+  });
+
+  it("drops the survivor's answer when the merge brings a batch request for the same words", async () => {
+    const held = heldRealtime([doubtful], 0);
+    const h = boot({
+      sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([doubtful, anmeldungOk]) },
+    });
+    const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
+    ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
+    const room = await idOf(h, 9000001);
+    await change(h, { batchOnly: true });
+    await setKey(h);
+    await h.runtime.analysis.idle();
+    await change(h, { batchOnly: false });
+    const made = await h.json("POST", `/offers/${room}/split`, { adId: "9000002" });
+    const reading = made.body.id as number;
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 1, state: "submitted" }]);
+    h.runtime.analysis.sweep();
+    await held.out();
+
+    await merge(h, reading, room);
+    expect(waiting(h)).toMatchObject([{ offerId: reading, stage: 1, state: "submitted" }]);
+    held.release();
+    await h.runtime.analysis.idle();
+    expect(h.runtime.offers.analysisJob(reading)?.state).toBe("pending");
+    await endBatch(h);
+    await endBatch(h);
+
+    expect((await offerOf(h, reading)).analysis.escalated).toBe(true);
+    expect(h.batch.submissions.flat().filter(isEscalation)).toHaveLength(1);
+    expect(waiting(h)).toEqual([]);
+    expect(usageRows(h, false)).toBe(1);
+    expect(usageRows(h, true)).toBe(2);
+  });
+
+  it("drops a click's answer when the merged Offer shows other words", async () => {
+    const held = heldRealtime([anmeldungOk, anmeldungOk, doubtful], 2);
+    const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });
+    await setKey(h);
+    ingestStored(h, KEPT, TAKEN);
+    await h.runtime.analysis.idle();
+    const [kept, taken] = [await idOf(h, KEPT.adId), await idOf(h, TAKEN.adId)];
+    const finished = (await offerOf(h, taken)).analysis;
+    await click(h, kept);
+    await held.out();
+
+    await merge(h, kept, taken);
+    held.release();
+    await h.runtime.analysis.idle();
+
+    const oldWords = adHash(h, KEPT.adId);
+    expect((await offerOf(h, kept)).analysis).toEqual(finished);
+    const stored = h.runtime.db.select().from(offers).all();
+    expect(stored.map((row) => JSON.parse(row.analysis ?? "{}").run?.contentHash)).toEqual([
+      adHash(h, TAKEN.adId),
+    ]);
+    const items = h.runtime.db.select().from(analysisItems).all();
+    expect(items.filter((item) => item.contentHash === oldWords)).toEqual([]);
   });
 });
 
