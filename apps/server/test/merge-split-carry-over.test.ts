@@ -2,7 +2,7 @@ import type { ModelFacts } from "@wg-hunt/core";
 import { wgGesuchtSource } from "@wg-hunt/core/sources/wg-gesucht";
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import type { AnalysisRun } from "../src/analysis/record.js";
+import type { AnalysisRun, OwedEscalation } from "../src/analysis/record.js";
 import { offerAds, offerPairOverrides, offers } from "../src/db/schema.js";
 import { type AdSpec, adPage, ingestAds, OTHER_ROOM_TEXT, photo } from "./dedupe-harness.js";
 import { bootOffers, MINUTE } from "./offers-harness.js";
@@ -196,6 +196,84 @@ describe("a merge declares what it carries over (B9)", () => {
     });
     expect(h.runtime.offers.analysisJob(first.id)?.wordsChanged).toBe(true);
   });
+});
+
+describe("a merge of two Offers that have both read the words it shows", () => {
+  /** One room posted twice with the same words and split; the second post's page is the current one. */
+  async function sameWordsSplit() {
+    const h = bootOffers();
+    const words = { title: "Zimmer in Mitte", text: OTHER_ROOM_TEXT };
+    ingestAds(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
+    const first = (await detailOf(h, 9000001)).id as number;
+    const second = (await h.json("POST", `/offers/${first}/split`, { adId: "9000002" })).body
+      .id as number;
+    const hash = adHash(h, "9000001");
+    expect(hash).not.toBe(null);
+    expect(adHash(h, "9000002")).toBe(hash);
+    return { h, first, second, hash: hash as string };
+  }
+
+  const owed = (hash: string): OwedEscalation => ({
+    carry: {} as OwedEscalation["carry"],
+    plan: { model: { model: "claude-haiku-5-5", effort: "low" }, escalation: null },
+    contentHash: hash,
+  });
+
+  for (const pageTakesOver of [true, false]) {
+    const into = pageTakesOver ? "the Offer whose page goes" : "the Offer whose page stays";
+    const sides = async () => {
+      const split = await sameWordsSplit();
+      const [survivor, absorbed] = pageTakesOver
+        ? [split.first, split.second]
+        : [split.second, split.first];
+      return { ...split, survivor, absorbed, page: split.second, other: split.first };
+    };
+
+    it(`keeps the final result over the page side's first pass, merged into ${into}`, async () => {
+      const { h, survivor, absorbed, page, other, hash } = await sides();
+      h.runtime.offers.saveAnalysis(page, read(1), run(hash), owed(hash));
+      h.runtime.offers.saveAnalysis(other, read(2), run(hash));
+
+      await h.json("POST", `/offers/${survivor}/merge`, { offerId: absorbed });
+
+      expect(rowOf(h, survivor)?.modelFacts).toBe(JSON.stringify(read(2)));
+      expect(h.runtime.offers.analysisJob(survivor)?.escalation).toBe(null);
+    });
+
+    it(`keeps the escalated result over the page side's final one, merged into ${into}`, async () => {
+      const { h, survivor, absorbed, page, other, hash } = await sides();
+      h.runtime.offers.saveAnalysis(page, read(1), run(hash));
+      h.runtime.offers.saveAnalysis(other, read(2), { ...run(hash), escalated: true });
+
+      await h.json("POST", `/offers/${survivor}/merge`, { offerId: absorbed });
+
+      expect(rowOf(h, survivor)?.modelFacts).toBe(JSON.stringify(read(2)));
+    });
+  }
+
+  for (const pageTakesOver of [true, false]) {
+    const into = pageTakesOver ? "the Offer whose page goes" : "the Offer whose page stays";
+    it(`keeps the page side's failure over an escalated result for other words, merged into ${into}`, async () => {
+      const h = twoRooms();
+      const [other, page] = [(await detailOf(h, 9000001)).id, (await detailOf(h, 9000002)).id];
+      h.runtime.offers.failAnalysis(page, "invalid_response");
+      h.runtime.offers.saveAnalysis(other, read(2), {
+        ...run(adHash(h, "9000001")),
+        escalated: true,
+      });
+      const [survivor, absorbed] = pageTakesOver ? [other, page] : [page, other];
+
+      await h.json("POST", `/offers/${survivor}/merge`, { offerId: absorbed });
+
+      const merged = rowOf(h, survivor);
+      expect(merged).toMatchObject({ analysisState: "failed", modelFacts: null });
+      expect(h.runtime.offers.analysisJob(survivor)?.failure).toMatchObject({
+        kind: "invalid_response",
+        attempts: 1,
+        contentHash: adHash(h, "9000002"),
+      });
+    });
+  }
 });
 
 describe("an absorbed Offer leaves a tombstone", () => {

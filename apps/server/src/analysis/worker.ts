@@ -222,6 +222,14 @@ export function createAnalysis(deps: {
         request,
         options.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))),
       );
+      // A merge during the call may have given the Offer a further read of its words, which this
+      // answer would overwrite or escalate again. The call is metered all the same.
+      const now = offers.analysisJob(id);
+      if (now === undefined || now.readDepth > job.readDepth) {
+        phases.set(id, "taken");
+        announce(id);
+        return "done";
+      }
       const step = readFirst(args, response);
       const analyzedAt = new Date(clock()).toISOString();
       const hash = contentHash(page.text);

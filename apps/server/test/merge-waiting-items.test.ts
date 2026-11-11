@@ -1,6 +1,6 @@
 import type { AnalysisProvider, BatchRequest } from "@wg-hunt/core";
 import { fakeBatchProvider, fakeProvider } from "@wg-hunt/core/analysis/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { carryWaiting } from "../src/analysis/batch-state.js";
 import { analysisItems, analysisUsage, offers } from "../src/db/schema.js";
 import {
@@ -161,11 +161,17 @@ describe("a merge while a batch reads the absorbed Offer's words", () => {
   });
 });
 
-type BatchScript = NonNullable<NonNullable<Parameters<typeof boot>[0]>["batchScript"]>;
+type BootOptions = NonNullable<Parameters<typeof boot>[0]>;
+type BatchScript = NonNullable<BootOptions["batchScript"]>;
 
 /** Posted with the same words, then split: Offers a batch reads the same words for. */
-async function sameWords(count: number, batchScript: BatchScript, size = 100) {
-  const h = boot({ batchScript, size });
+async function sameWords(
+  count: number,
+  batchScript: BatchScript,
+  size = 100,
+  script?: BootOptions["script"],
+) {
+  const h = boot({ batchScript, size, ...(script && { script }) });
   const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
   const adIds = Array.from({ length: count }, (_, index) => 9000001 + index);
   ingestStored(h, ...adIds.map((adId) => ({ adId, ...words })));
@@ -238,6 +244,126 @@ describe("a merge of two Offers whose same words are in two batches", () => {
   }
 });
 
+describe("a merge into an Offer still waiting on words the absorbed one has finished reading", () => {
+  for (const [late, answer] of [
+    ["is sure", anmeldungOk],
+    ["asks for an escalation", doubtful],
+  ] as const) {
+    it(`keeps the escalated result when the survivor's first pass ends late and ${late}`, async () => {
+      const { h, ids } = await sameWords(2, [doubtful, anmeldungOk, answer], 1);
+      const [room, other] = ids as [number, number];
+      await poll(h);
+      h.batch.complete("batch-2");
+      await poll(h);
+      h.batch.complete("batch-3");
+      await poll(h);
+      const finished = (await offerOf(h, other)).analysis;
+      expect(finished.escalated).toBe(true);
+      expect(waiting(h)).toMatchObject([{ offerId: room, stage: 1, state: "submitted" }]);
+
+      await merge(h, room, other);
+
+      expect((await offerOf(h, room)).analysis).toEqual(finished);
+      expect(waiting(h)).toEqual([]);
+      h.batch.complete("batch-1");
+      await poll(h);
+      h.runtime.analysis.sweep();
+      await h.runtime.analysis.idle();
+      await poll(h);
+      const end = await offerOf(h, room);
+      expect(end.analysis).toEqual(finished);
+      expect(end.analysisStatus.status).toBe("analyzed");
+      expect(h.batch.submissions).toHaveLength(3);
+      expect(waiting(h)).toEqual([]);
+      expect(billedBatchAnswers(h)).toBe(3);
+    });
+  }
+
+  it("withdraws the survivor's waiting escalation when the absorbed Offer holds the final result", async () => {
+    const { h, ids } = await sameWords(2, [doubtful, anmeldungOk, anmeldungOk], 1);
+    const [room, other] = ids as [number, number];
+    await poll(h);
+    h.batch.complete("batch-1");
+    await poll(h);
+    h.batch.complete("batch-2");
+    await poll(h);
+    expect((await offerOf(h, room)).analysisStatus.status).not.toBe("analyzed");
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 2, state: "submitted" }]);
+    const finished = (await offerOf(h, other)).analysis;
+
+    await merge(h, room, other);
+
+    expect((await offerOf(h, room)).analysis).toEqual(finished);
+    expect(waiting(h)).toEqual([]);
+    h.batch.complete("batch-3");
+    await poll(h);
+    h.runtime.analysis.sweep();
+    await h.runtime.analysis.idle();
+    await poll(h);
+    const end = await offerOf(h, room);
+    expect(end.analysis).toEqual(finished);
+    expect(end.analysisStatus.status).toBe("analyzed");
+    expect(h.batch.submissions).toHaveLength(3);
+    expect(billedBatchAnswers(h)).toBe(3);
+  });
+
+  it("keeps a Re-analyse click's request on a survivor that had read as far", async () => {
+    const { h, ids } = await sameWords(2, [anmeldungOk], 100, [doubtful]);
+    const [room, other] = ids as [number, number];
+    await endBatch(h);
+    await click(h, room);
+    await h.runtime.analysis.idle();
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 2, state: "submitted" }]);
+
+    await merge(h, room, other);
+
+    expect(waiting(h)).toMatchObject([{ offerId: room, stage: 2, state: "submitted" }]);
+    await endBatch(h);
+    expect((await offerOf(h, room)).analysis.escalated).toBe(true);
+    expect(waiting(h)).toEqual([]);
+  });
+});
+
+describe("a merge while the survivor's realtime read is out", () => {
+  it("drops the answer when the absorbed Offer had already read the same words", async () => {
+    const scripted = fakeProvider([anmeldungOk, doubtful]);
+    let arrived = 0;
+    let open = () => {};
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const provider: AnalysisProvider = {
+      async analyse(request) {
+        if (arrived++ === 1) await gate;
+        return scripted.provider.analyse(request);
+      },
+    };
+    const h = boot({
+      sameProviders: { realtime: { ...scripted, provider }, batch: fakeBatchProvider([]) },
+    });
+    const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
+    ingestStored(h, { adId: 9000001, ...words }, { adId: 9000002, ...words });
+    const room = await idOf(h, 9000001);
+    const split = await h.json("POST", `/offers/${room}/split`, { adId: "9000002" });
+    const reading = split.body.id as number;
+    await setKey(h);
+    h.runtime.analysis.sweep();
+    await vi.waitFor(() => expect(arrived).toBe(2));
+    const finished = (await offerOf(h, room)).analysis;
+    expect(finished.analyzedAt).not.toBe(null);
+
+    await merge(h, reading, room);
+    open();
+    await h.runtime.analysis.idle();
+
+    expect(scripted.requests).toHaveLength(2);
+    const end = await offerOf(h, reading);
+    expect(end.analysis).toEqual(finished);
+    expect(end.analysisStatus.status).toBe("analyzed");
+    expect(h.runtime.db.select().from(analysisItems).all()).toEqual([]);
+  });
+});
+
 function orders<T>(events: T[]): T[][] {
   if (events.length <= 1) return [events];
   return events.flatMap((event, index) =>
@@ -297,14 +423,19 @@ describe("three Offers a batch each reads the same words for, two merged into th
   it("escalates no more than without the merge, whenever the answers come", async () => {
     const wrong: unknown[] = [];
     for (const order of orders([...EVENTS])) {
-      const late = [
-        absorbedFirst(order, "batch-2", "merge second"),
-        absorbedFirst(order, "batch-3", "merge third"),
-      ];
+      const early = (
+        [
+          ["batch-2", "merge second"],
+          ["batch-3", "merge third"],
+        ] as const
+      ).filter(([batch, merged]) => !absorbedFirst(order, batch, merged));
+      // Merged in before the survivor's own first pass answers, an Offer that already read the
+      // words to the end withdraws that pass, and the escalation it would ask for.
+      const ownFirstPass = early.every(([, merged]) => !absorbedFirst(order, "batch-1", merged));
       const wanted = {
         escalated: true,
         lost: false,
-        escalations: 1 + late.filter((absorbed) => !absorbed).length,
+        escalations: early.length + (ownFirstPass ? 1 : 0),
         waiting: 0,
         unbilled: 0,
       };
@@ -377,8 +508,10 @@ describe("the waiting requests a survivor takes over", () => {
         })
         .returning()
         .get().id;
-    const carry = (words: string | null = "shown") =>
-      db.$client.transaction(() => carryWaiting(db, taken.id, kept.id, words))();
+    const carry = (
+      words: string | null = "shown",
+      keep: Parameters<typeof carryWaiting>[4] = { survivor: true, absorbed: true },
+    ) => db.$client.transaction(() => carryWaiting(db, taken.id, kept.id, words, keep))();
     const left = () =>
       db
         .select()
@@ -432,5 +565,43 @@ describe("the waiting requests a survivor takes over", () => {
     carry(null);
 
     expect(left()).toEqual([one, other].map((id) => ({ id, offerId: kept })));
+  });
+
+  it("withdraws the survivor's requests for the words it has no use for, sent or not", () => {
+    const { kept, taken, add, carry, left } = twoOffers();
+    add(kept, { state: "submitted" });
+    add(kept, { stage: 2 });
+    const otherWords = add(kept, { contentHash: "not shown" });
+    const absorbed = add(taken, { state: "submitted" });
+
+    carry("shown", { survivor: false, absorbed: true });
+
+    expect(left()).toEqual([
+      { id: otherWords, offerId: kept },
+      { id: absorbed, offerId: kept },
+    ]);
+  });
+
+  it("leaves the absorbed Offer's requests behind when it has no use for them", () => {
+    const { kept, taken, add, carry, left } = twoOffers();
+    const mine = add(kept, {});
+    const theirs = add(taken, { state: "submitted", stage: 2 });
+
+    carry("shown", { survivor: true, absorbed: false });
+
+    expect(left()).toEqual([
+      { id: mine, offerId: kept },
+      { id: theirs, offerId: taken },
+    ]);
+  });
+
+  it("keeps neither side's requests for the words when it has a use for neither", () => {
+    const { kept, taken, add, carry, left } = twoOffers();
+    add(kept, { state: "submitted" });
+    const theirs = add(taken, {});
+
+    carry("shown", { survivor: false, absorbed: false });
+
+    expect(left()).toEqual([{ id: theirs, offerId: taken }]);
   });
 });

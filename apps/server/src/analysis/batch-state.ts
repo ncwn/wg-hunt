@@ -23,8 +23,9 @@ export type ItemMove =
   | { to: "dropped" }
   | { to: "discarded" }
   /**
-   * After a merge another request reads the same words. One already sent is still billed: its
-   * answer finds no item and is priced from what its batch row remembers.
+   * After a merge another request reads the same words, or the merged Offer has read past the step
+   * it asks for. One already sent is still billed: its answer finds no item and is priced from what
+   * its batch row remembers.
    */
   | { to: "withdrawn" };
 
@@ -73,25 +74,29 @@ export const SETTLED: readonly AnalysisItemState[] = ["applied", "failed", "capp
 /**
  * Runs in the merge's transaction, before the absorbed Offer's row goes and takes its other items
  * along. `words`: the merged Offer's `contentHash`. A request for other words stays behind: on the
- * survivor it would hold the Offer until its batch ends, only to be dropped. The caller decides
- * whether the merged Offer still has a use for the requests at all.
+ * survivor it would hold the Offer until its batch ends, only to be dropped. `keep`: whether the
+ * merged Offer still has a use for each side's requests for `words`.
  */
 export function carryWaiting(
   db: Db,
   absorbedId: number,
   survivorId: number,
   words: string | null,
+  keep: { survivor: boolean; absorbed: boolean },
 ): void {
-  db.update(analysisItems)
-    .set({ offerId: survivorId })
-    .where(
-      and(
-        eq(analysisItems.offerId, absorbedId),
-        inArray(analysisItems.state, WAITING),
-        words === null ? undefined : eq(analysisItems.contentHash, words),
-      ),
-    )
-    .run();
+  const waitingFor = (offerId: number) =>
+    and(
+      eq(analysisItems.offerId, offerId),
+      inArray(analysisItems.state, WAITING),
+      words === null ? undefined : eq(analysisItems.contentHash, words),
+    );
+  if (!keep.survivor) {
+    const unused = db.select().from(analysisItems).where(waitingFor(survivorId)).all();
+    for (const item of unused) removeItem(db, item.id, "withdrawn");
+  }
+  if (keep.absorbed) {
+    db.update(analysisItems).set({ offerId: survivorId }).where(waitingFor(absorbedId)).run();
+  }
   const waiting = db
     .select()
     .from(analysisItems)
