@@ -29,7 +29,7 @@ import {
   type SourceAdapter,
 } from "@wg-hunt/core";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
-import { WAITING } from "../analysis/batch-state.js";
+import { carryWaiting, WAITING } from "../analysis/batch-state.js";
 import { keyState } from "../analysis/key.js";
 import {
   type AnalysisFailure,
@@ -1791,6 +1791,7 @@ export function createOffers(deps: {
         set: { mergedInto: survivorId },
       })
       .run();
+    carryWaiting(db, absorbedId, survivorId);
     db.delete(offers).where(eq(offers.id, absorbedId)).run();
   }
 

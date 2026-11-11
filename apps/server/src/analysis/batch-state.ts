@@ -1,5 +1,5 @@
 import { type AnalysisErrorKind, type EscalationState, policyOf } from "@wg-hunt/core";
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import {
   type AnalysisBatchRow,
@@ -55,6 +55,36 @@ const BATCH_FROM: Record<
 
 export const WAITING: readonly AnalysisItemState[] = ["queued", "submitted"];
 export const SETTLED: readonly AnalysisItemState[] = ["applied", "failed", "capped", "dropped"];
+
+/**
+ * Runs in the merge's transaction, before the absorbed Offer's row goes and takes its items along.
+ * A request for words the survivor no longer shows is dropped when it is sent or answered, like any
+ * other whose Offer's words changed.
+ */
+export function carryWaiting(db: Db, absorbedId: number, survivorId: number): void {
+  db.update(analysisItems)
+    .set({ offerId: survivorId })
+    .where(and(eq(analysisItems.offerId, absorbedId), inArray(analysisItems.state, WAITING)))
+    .run();
+  const waiting = db
+    .select()
+    .from(analysisItems)
+    .where(and(eq(analysisItems.offerId, survivorId), inArray(analysisItems.state, WAITING)))
+    // Sent requests are billed whatever happens here and a run counts its own, so those are the
+    // ones to keep.
+    .orderBy(desc(analysisItems.state), sql`${analysisItems.runId} is null`, asc(analysisItems.id))
+    .all();
+  const carried = new Set<string>();
+  for (const item of waiting) {
+    const words = `${item.stage}:${item.contentHash}`;
+    // Both Offers were waiting on the same words: sending both bills them twice.
+    if (item.state === "queued" && item.runId === null && carried.has(words)) {
+      db.delete(analysisItems).where(eq(analysisItems.id, item.id)).run();
+      continue;
+    }
+    carried.add(words);
+  }
+}
 
 export type SentRequest = {
   itemId: number;
