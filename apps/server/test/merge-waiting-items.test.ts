@@ -497,6 +497,65 @@ describe("a merge while a realtime read is out", () => {
     }
   }
 
+  /** `finished` holds the final result; the ordinary first read of `reading` is out. */
+  async function ordinaryReadOut(answer: Scripted) {
+    const held = heldRealtime([anmeldungOk, answer], 1);
+    const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });
+    const { room: finished, other: reading } = await postedTwice(h);
+    await setKey(h);
+    h.runtime.analysis.sweep();
+    await held.out();
+    expect(h.runtime.offers.analysisJob(reading)?.reanalyzeRequestedAt).toBe(null);
+    const result = (await offerOf(h, finished)).analysis;
+    return { h, held, finished, reading, result };
+  }
+
+  for (const survives of ["finished", "reading"] as const) {
+    it(`stores an ordinary read a click took over while it was out: ${survives} survives`, async () => {
+      const { h, held, result, ...ids } = await ordinaryReadOut(anmeldungOk);
+      await click(h, ids.reading);
+      const [survivor, absorbed] =
+        survives === "finished" ? [ids.finished, ids.reading] : [ids.reading, ids.finished];
+
+      await merge(h, survivor, absorbed);
+      h.clock.now += MINUTE;
+      held.release();
+      await h.runtime.analysis.idle();
+
+      const stored = await offerOf(h, survivor);
+      expect(stored.analysis.analyzedAt).not.toBe(result.analyzedAt);
+      expect(stored.analysisStatus.status).toBe("analyzed");
+      expect(h.runtime.offers.analysisJob(survivor)?.reanalyzeRequestedAt).toBe(null);
+      h.runtime.analysis.sweep();
+      await h.runtime.analysis.idle();
+      // The finished Offer's own read, and the one that was out.
+      expect(held.realtime.requests).toHaveLength(2);
+      expect(waiting(h)).toEqual([]);
+    });
+
+    it(`records no failure of an ordinary read on a final result it was merged with: ${survives} survives`, async () => {
+      const { h, held, result, ...ids } = await ordinaryReadOut(new ProviderError("truncated"));
+      const [survivor, absorbed] =
+        survives === "finished" ? [ids.finished, ids.reading] : [ids.reading, ids.finished];
+
+      await merge(h, survivor, absorbed);
+      held.release();
+      await h.runtime.analysis.idle();
+
+      const end = await offerOf(h, survivor);
+      expect(end.analysis).toEqual(result);
+      expect(end.analysisStatus.status).toBe("analyzed");
+      expect(h.runtime.offers.analysisJob(survivor)).toMatchObject({
+        failure: null,
+        reanalyzeRequestedAt: null,
+      });
+      h.runtime.analysis.sweep();
+      await h.runtime.analysis.idle();
+      expect(held.realtime.requests).toHaveLength(2);
+      expect(waiting(h)).toEqual([]);
+    });
+  }
+
   it("stores the absorbed Offer's answer on a survivor that had read nothing", async () => {
     const held = heldRealtime([anmeldungOk], 0);
     const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });

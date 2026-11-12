@@ -215,6 +215,19 @@ export function createAnalysis(deps: {
     }
 
     const hash = contentHash(page.text);
+    // A merge during the call may have moved the room to another Offer: what the call brings back,
+    // answer or failure, is its, a click it took over included. Where that Offer shows other
+    // words, or waits on a batch's answer for them, it would overwrite a result, escalate a second
+    // time or be overwritten in turn; so would one where it has read further into them, unless it
+    // owes a click now, which asks for another read whatever is held. A click made while the call
+    // was out counts: the call is its reading too.
+    const speaksFor = (holder: number): AnalysisJob | undefined => {
+      const now = offers.analysisJob(holder);
+      if (now === undefined) return undefined;
+      if (now.contentHash !== null && now.contentHash !== hash) return undefined;
+      if (now.reanalyzeRequestedAt === null && now.readDepth > job.readDepth) return undefined;
+      return batch.heldBy(holder) === "batch" ? undefined : now;
+    };
     phases.set(id, "reading");
     announce(id);
     try {
@@ -223,19 +236,10 @@ export function createAnalysis(deps: {
         request,
         options.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))),
       );
-      // A merge during the call may have moved the room to another Offer: the answer is its, a
-      // click it took over included. Stored where that Offer shows other words, or waits on a
-      // batch's answer for them, it would overwrite a result, escalate a second time or be
-      // overwritten in turn; so would an ordinary read where it has read further into them, but a
-      // click asks for another read whatever is held. The call is metered all the same.
       const holder = offers.mergedInto(id) ?? id;
-      const now = offers.analysisJob(holder);
-      if (
-        now === undefined ||
-        (now.contentHash !== null && now.contentHash !== hash) ||
-        (!force && now.readDepth > job.readDepth) ||
-        batch.heldBy(holder) === "batch"
-      ) {
+      const now = speaksFor(holder);
+      // The call is metered all the same.
+      if (now === undefined) {
         phases.set(id, "taken");
         announceAll([id, holder]);
         return "done";
@@ -290,10 +294,9 @@ export function createAnalysis(deps: {
         // Nothing was sent, so there is nothing to store; a click on it stays owed.
         if (kind === "spend_cap_reached") noRoom.add(holder);
       } else {
-        // A failure for words the Offer no longer shows says nothing about the ones it does: a
-        // click it took over stays owed and is read for those.
-        const shown = offers.analysisJob(holder)?.contentHash;
-        if (shown === null || shown === hash) fail(holder, kind);
+        // As `apply` drops a batch failure for words the Offer no longer has: a click it took over
+        // stays owed and is read again.
+        if (speaksFor(holder) !== undefined) fail(holder, kind);
       }
       phases.set(id, "taken");
       if (marked) phases.delete(holder);
