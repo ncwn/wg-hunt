@@ -688,6 +688,19 @@ describe("version check", () => {
   });
 });
 
+describe("--help", () => {
+  it("prints the header comment and nothing after it", async () => {
+    const after = readFileSync(SCRIPT, "utf8").split("\n").slice(1);
+    const header = after.slice(
+      0,
+      after.findIndex((line) => !line.startsWith("#")),
+    );
+    const result = await wg(baseBin(), ["--help"]);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe(`${header.map((line) => line.replace(/^# ?/, "")).join("\n")}\n`);
+  });
+});
+
 describe("detection", () => {
   it("fails with what it tried when no route works", async () => {
     const bin = baseBin();

@@ -53,7 +53,7 @@ const A: AdSpec = { adId: 9000001, warmRent: 450, title: "Zimmer A" };
 const B: AdSpec = { adId: 9000002, warmRent: 480, title: "Zimmer B", text: ROOM_TEXT_EDITED };
 
 describe("the current Ad ID", () => {
-  it("is the most recently active one: a newer deactivated Ad ID is not current (B7)", async () => {
+  it("is the most recently active one: a newer deactivated Ad ID is not current", async () => {
     const h = bootOffers();
     const [first] = storeAds(h, A, B);
     const id = first?.offerId as number;
@@ -81,7 +81,7 @@ describe("the current Ad ID", () => {
 });
 
 describe("losing the current Ad ID", () => {
-  it("re-reads the Offer's facts, title and card from the new current page when the page is deleted (B6)", async () => {
+  it("re-reads the Offer's facts, title and card from the new current page when the page is deleted", async () => {
     const h = bootOffers();
     const [first] = storeAds(h, A, B);
     const id = first?.offerId as number;
@@ -234,7 +234,7 @@ describe("the rent an Offer takes from an older stored page", () => {
   });
 });
 
-describe("pages stored but not yet made into Offers (B15)", () => {
+describe("pages stored but not yet made into Offers", () => {
   async function unadopted() {
     const h = bootOffers();
     h.site.cards = h.freshCards([9000001]);

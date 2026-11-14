@@ -20,8 +20,8 @@ const plus = (since: Date | null, days: number) =>
   since === null ? null : new Date(since.getTime() + days * DAY).toISOString();
 
 /**
- * The stored columns are written by the nightly prune, so a clock that has not started yet is read
- * as the next prune will start it.
+ * A clock no sample has started yet is read as the next nightly prune will start it, which is the
+ * latest it starts.
  */
 function retentionOf(offer: ClassifiedOffer, now: number): OfferRetention {
   const clocks = nextClocks(offer, new Date(nextScheduledPrune(now)));

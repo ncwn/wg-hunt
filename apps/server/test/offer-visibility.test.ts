@@ -30,7 +30,7 @@ async function searchId(h: Boot): Promise<number> {
   return search.id;
 }
 
-describe("B1: a band never contradicts its hidden cause", () => {
+describe("a band never contradicts its hidden cause", () => {
   it("shows an Offer that went Stale by age as Hidden on the very next read, before any re-band", async () => {
     const { h, id } = await oneOffer();
     h.clock.now += 8 * DAY;
@@ -74,7 +74,7 @@ describe("B1: a band never contradicts its hidden cause", () => {
   });
 });
 
-describe("B2: Dismiss is remembered whatever the cause", () => {
+describe("Dismiss is remembered whatever the cause", () => {
   it("records a Dismiss made while the Offer is Untracked, and announces nothing when it is tracked again", async () => {
     const { h, id } = await oneOffer();
     const search = await searchId(h);
@@ -117,7 +117,7 @@ describe("B2: Dismiss is remembered whatever the cause", () => {
   });
 });
 
-describe("B3: the preview and the counts agree", () => {
+describe("the preview and the counts agree", () => {
   it("counts the same bands before a draft as GET /offers/counts, also when a move only time caused is pending", async () => {
     const { h } = await oneOffer();
     h.clock.now += 8 * DAY;
@@ -128,7 +128,7 @@ describe("B3: the preview and the counts agree", () => {
   });
 });
 
-describe("B4: a full re-band counts only the moves it records", () => {
+describe("a full re-band counts only the moves it records", () => {
   it("does not count an Untracked Offer as moved", async () => {
     const { h } = await oneOffer();
     await h.json("PATCH", `/searches/${await searchId(h)}`, { enabled: false });
@@ -137,7 +137,7 @@ describe("B4: a full re-band counts only the moves it records", () => {
   });
 });
 
-describe("B18: band events wait for the write to commit", () => {
+describe("band events wait for the write to commit", () => {
   it("publishes nothing when an outer transaction rolls the write back", async () => {
     const { h, id } = await oneOffer();
     expect(() =>

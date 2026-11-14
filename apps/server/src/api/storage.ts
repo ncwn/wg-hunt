@@ -151,7 +151,8 @@ const storageSchema = z
     retention: z
       .object({
         recordDays: z.number().int().openapi({
-          description: "An Offer record is deleted this long after it went Stale or Untracked",
+          description:
+            "An Offer record is deleted this long after it went Stale or Untracked, or after nothing kept the record any more if that came later",
         }),
         snapshotDays: z.number().int(),
         unexpectedPageDays: z.number().int(),

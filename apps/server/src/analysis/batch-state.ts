@@ -132,7 +132,7 @@ export function createBatchState(deps: {
   /** Epoch milliseconds. */
   clock: () => number;
   offers: Pick<Offers, "analysisJob" | "failAnalysis">;
-  /** Called inside the same transaction; not for a discarded item. */
+  /** Called inside the same transaction; not for a discarded or withdrawn item. */
   onSettled?: (item: AnalysisItemRow) => void;
 }) {
   const { db, clock, offers, onSettled } = deps;

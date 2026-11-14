@@ -34,7 +34,7 @@ const sweepPageJobs = (h: ReturnType<typeof bootSweep>) =>
     .filter((job) => JSON.parse(job.payload ?? "{}").type === "sweep-page");
 
 describe("the Sweep's lifecycle", () => {
-  it("starts a backfill when a Search it could not read becomes readable without an edit (B6)", async () => {
+  it("starts a backfill when a Search it could not read becomes readable without an edit", async () => {
     const h = boot();
     h.site.listing = h.cards(9003000, 7);
     const pages = vi
@@ -60,7 +60,7 @@ describe("the Sweep's lifecycle", () => {
     expect(sweep.lastFinishedAt).not.toBeNull();
   });
 
-  it("never judges from a running Sweep with no start time; it starts over instead (B12)", async () => {
+  it("never judges from a running Sweep with no start time; it starts over instead", async () => {
     const { h, search } = await settled(7);
     h.runtime.db
       .update(searchSweeps)
@@ -141,7 +141,7 @@ describe("the Sweep's lifecycle", () => {
     });
   });
 
-  it("takes over a poll continuation queued for the page it needs, so the page is read once (B11)", async () => {
+  it("takes over a poll continuation queued for the page it needs, so the page is read once", async () => {
     const { h, search } = await settled(12);
     const settings = defaultCrawlSettings();
     saveCrawlSettings(

@@ -168,7 +168,7 @@ export function createEventSourceStream(
           reason = data.reason as SessionEndReason;
         }
       } catch {
-        // An unreadable reason still ends the session; the check after it tells which way.
+        // An unreadable reason still ends the session.
       }
       shut();
       become({ status: "ended", reason });

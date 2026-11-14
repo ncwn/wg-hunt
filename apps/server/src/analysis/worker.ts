@@ -48,7 +48,7 @@ export type AnalysisOverview = ReturnType<Analysis["status"]>;
 /**
  * Where the realtime worker has an Offer; one it holds nothing of has no entry.
  * - `queued`: in `queue`.
- * - `taken`: off the queue, and nothing has been sent for it.
+ * - `taken`: off the queue with no call out: before its call, or after one that came back.
  * - `reading`: its call is out.
  * - `unstored`: its call went out and its outcome could not be stored: the database took no write
  *   (a full disk). The call was billed, and no spend was recorded for the cap to hold, so this
