@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { offers, seenAds } from "../src/db/schema.js";
+import { offerAds, offers, searchMatches, seenAds } from "../src/db/schema.js";
+import { adPage } from "./dedupe-harness.js";
 import { adapterFixture } from "./fixtures/search-pages.js";
-import { HOUR } from "./offers-harness.js";
+import { bootOffers, HOUR } from "./offers-harness.js";
 import { DAY, goStale, nights, oneOffer, recordExists } from "./retention-harness.js";
 import { berlin, bootSweep } from "./sweep-harness.js";
 
@@ -79,6 +80,58 @@ describe("an Offer that comes back and goes quiet again between two prunes", () 
     expect(recordExists(h, id)).toBe(true);
     nights(h, 2);
     expect(recordExists(h, id)).toBe(false);
+  });
+});
+
+describe("a room a merge shows again", () => {
+  it("keeps the record 90 days from the Recheck that finds it taken the same day", async () => {
+    const h = bootOffers();
+    const [fresh, stale] = ["9000001", "9000002"];
+    h.site.cards = h.freshCards([Number(fresh), Number(stale)]);
+    // One room posted twice: dedupe takes the two Ad IDs for one Offer.
+    for (const adId of [fresh, stale]) h.site.pages.set(Number(adId), adPage({ adId: +adId }));
+    await h.addSearch();
+    await h.crawl();
+    const { items } = (await h.json("GET", "/offers")).body;
+    expect(items).toHaveLength(1);
+    const room = items[0].id as number;
+    const db = h.runtime.db;
+    db.update(offerAds)
+      .set({ lastBumpAt: new Date(h.clock.now - 20 * DAY) })
+      .where(eq(offerAds.adId, stale))
+      .run();
+    // Asked while the fresh Ad ID is Tracked, the Recheck stays queued once it is not.
+    expect((await h.call("POST", `/offers/${room}/recheck`)).status).toBe(202);
+    h.site.cards = [];
+    h.site.pages.set(Number(fresh), adapterFixture("deactivated"));
+
+    // Cut in two behind the server's back, each half quiet for its own reason since long ago:
+    // the fresh Ad ID left the Search, the other is Stale.
+    db.delete(searchMatches).where(eq(searchMatches.adId, fresh)).run();
+    const half = 77;
+    const row = db.select().from(offers).where(eq(offers.id, room)).get();
+    if (row === undefined) throw new Error("expected the room's Offer");
+    db.insert(offers)
+      .values({ ...row, id: half })
+      .run();
+    db.update(offerAds).set({ offerId: half }).where(eq(offerAds.adId, fresh)).run();
+    const long = new Date(h.clock.now - 85 * DAY);
+    db.update(offers).set({ quietSince: long, recordClockSince: long }).run();
+
+    expect(h.runtime.offers.dedupePass()).toBe(1);
+    expect((await h.json("GET", `/offers/${room}`)).body.retention.state).toBe("not-quiet");
+
+    h.clock.now += 4 * HOUR;
+    await h.crawl();
+    const after = (await h.json("GET", `/offers/${room}`)).body;
+    expect(after.stale).toBe(true);
+    const recheckedAt = h.clock.now;
+    expect(new Date(after.retention.recordExpiresAt).getTime()).toBeGreaterThan(
+      recheckedAt + 89 * DAY,
+    );
+
+    nights(h, 10);
+    expect(recordExists(h, room)).toBe(true);
   });
 });
 

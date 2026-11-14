@@ -1168,6 +1168,9 @@ export function createOffers(deps: {
     if (parsed.status === "deleted") {
       const gone = db.$client.transaction((): IngestResult => {
         const known = db.select().from(offerAds).where(adKey(fetched.source, fetched.adId)).get();
+        // A merge may have shown the Offer since the last sample and left the clock it carried
+        // over running: stopped here, it does not outlive the page that makes the Offer quiet.
+        if (known !== undefined) refreshOfferClocks(db, known.offerId, now.getTime());
         const before = known && currentAd(adsOf([known.offerId]).get(known.offerId) ?? []);
         // Reading that the page is gone is a Recheck that worked: nothing waits to retry it.
         db.update(offerAds)
@@ -1207,6 +1210,8 @@ export function createOffers(deps: {
     const result = db.$client.transaction((): IngestResult => {
       const known = db.select().from(offerAds).where(adKey(fetched.source, fetched.adId)).get();
       if (known) {
+        // As for a deleted page.
+        refreshOfferClocks(db, known.offerId, now.getTime());
         const before = currentAd(adsOf([known.offerId]).get(known.offerId) ?? [known]);
         db.update(offerAds)
           .set({
