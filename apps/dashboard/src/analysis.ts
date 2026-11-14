@@ -37,6 +37,7 @@ export type Analysis = {
 export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
   const [view, setView] = useState<AnalysisStatusView>({ status: "loading" });
   const [run, setRun] = useState<RunState>(NO_RUN);
+  const [owed, setOwed] = useState(false);
   const reload = useRef<() => void>(() => {});
   // Counts snapshots heard. A read begun before the latest one is older than it, so it is not
   // shown, though its run is still looked up.
@@ -45,6 +46,7 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
   const read = useCallback(async () => {
     const since = snapshots.current;
     const result = await ask(() => api.GET("/analysis"));
+    setOwed(!result.ok);
     if (result.ok) {
       if (snapshots.current === since) setView({ status: "ready", analysis: result.data });
       return result.data;
@@ -56,14 +58,14 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
     return undefined;
   }, [api]);
 
-  // A failed status doesn't wait for an event that may not come: it is asked for again, with the
-  // run it names, since a run already going is only picked up by the full load.
-  const failed = view.status === "failed";
+  // A failed read, even with a status already on screen, doesn't wait for an event that may not
+  // come: it is asked for again, with the run it names, since a run already going is only picked
+  // up by the full load.
   useEffect(() => {
-    if (!failed) return;
+    if (!owed) return;
     const timer = setInterval(() => reload.current(), ANALYSIS_RETRY_MS);
     return () => clearInterval(timer);
-  }, [failed]);
+  }, [owed]);
 
   const refresh = useCallback(() => {
     setView((now) => (now.status === "failed" ? { status: "loading" } : now));
@@ -82,9 +84,15 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
 
   useEffect(() => {
     let cancelled = false;
+    const lookUp = async (id: number, activeRunId: number | null, since: number) => {
+      const found = await ask(() => api.GET("/analysis/runs/{id}", { params: { path: { id } } }));
+      if (cancelled || heard.current !== since) return;
+      const lookup = found.ok ? { found: progressOf(found.data) } : { problem: found.message };
+      setRun((now) => looked(now, id, activeRunId, lookup));
+    };
     const load = () => {
       const since = heard.current;
-      void read().then(async (data) => {
+      void read().then((data) => {
         if (cancelled || data === undefined) return;
         // A run going before this page opened is picked up where it is; one this page followed
         // that ended while the connection was down is read for its outcome, since its last
@@ -92,11 +100,7 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
         const followed = latestRun.current;
         const id =
           data.activeRunId ?? (followed.status === "following" ? followed.runId : undefined);
-        if (id === undefined) return;
-        const found = await ask(() => api.GET("/analysis/runs/{id}", { params: { path: { id } } }));
-        if (cancelled || heard.current !== since) return;
-        const lookup = found.ok ? { found: progressOf(found.data) } : { problem: found.message };
-        setRun((now) => looked(now, id, data.activeRunId, lookup));
+        if (id !== undefined) void lookUp(id, data.activeRunId, since);
       });
     };
     reload.current = load;
@@ -126,6 +130,10 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
         // No read has brought its run yet, and the first may still fail after this has made the
         // view ready.
         if (latestView.current.status !== "ready" && unknownRun) reload.current();
+        // The run followed ended without its last announcement reaching this page.
+        if (analysis.activeRunId === null && followed.status === "following") {
+          void lookUp(followed.runId, null, heard.current);
+        }
         setView({ status: "ready", analysis });
       } else if (event.type === "spend-cap-reached" || event.type === "spend-cap-cleared") {
         // Both carry the whole cap state, so the warning comes and goes with the server's.
