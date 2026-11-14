@@ -141,10 +141,10 @@ export function createSpendLedger(deps: {
     return usdToMicros(usageCostUsd(worst, price, options));
   }
 
-  function nominalCallMicros(current: AnalysisSettings, options: { batch: boolean }): number {
+  function nominalCallMicros(choice: ModelChoice, options: { batch: boolean }): number {
     const request: AnalysisRequest = {
-      model: current.model,
-      effort: current.effort,
+      model: choice.model,
+      effort: choice.effort,
       prefix: ANALYSIS_PREFIX,
       userTurn: "x".repeat(NOMINAL_OFFER_CHARS),
     };
@@ -180,14 +180,32 @@ export function createSpendLedger(deps: {
     };
   }
 
+  /** Can be false while `capState()` says `ok`: a run's Offer may need an escalation too. */
+  function fitsRun(): boolean {
+    const current = settings();
+    const escalation =
+      current.escalation === null ? 0 : nominalCallMicros(current.escalation, { batch: true });
+    return (
+      capMicros() - spentMicros() - batchReservedMicros() >=
+      nominalCallMicros(current, { batch: true }) + escalation
+    );
+  }
+
   /** Last announced on `/events`; a fresh process starts at `ok`, so a held cap is said once. */
   let announced: CapState = "ok";
+  /** Spend can stop a run fitting while the cap state stays `ok`, and nothing else would say so. */
+  let runFitted = true;
 
   function sync(): SpendState {
     const now = capState();
-    if (now.state !== announced) {
+    const fits = fitsRun();
+    const capChanged = now.state !== announced;
+    if (capChanged) {
       announced = now.state;
       events.publish(now.state === "ok" ? "spend-cap-cleared" : "spend-cap-reached", now);
+    }
+    if (capChanged || fits !== runFitted) {
+      runFitted = fits;
       deps.onChange?.();
     }
     return now;
@@ -203,6 +221,7 @@ export function createSpendLedger(deps: {
     spentUsd: () => spentMicros() / MICROS,
     fitsRealtime: () =>
       headroomBetweenCallsMicros() >= nominalCallMicros(settings(), { batch: false }),
+    fitsRun,
 
     /** Returns its cost in micros. */
     record(call: {

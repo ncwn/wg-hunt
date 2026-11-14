@@ -2844,7 +2844,7 @@ export interface paths {
         put?: never;
         /**
          * Re-analyse the Offers on an older analysis, as a batch
-         * @description The only way a re-analysis run starts. It reads every non-Stale Offer whose result is on an older analysis version again through the Message Batches API, and answers `202` with the run. The previous result of each Offer stays current until its new one succeeds; a failed request leaves it. Refused with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`), with `spend-cap-reached` when the cap is spent, and with `nothing-to-reanalyze` when no Offer is on an older analysis (`olderVersion.count` on `GET /analysis` is 0). The run stops sending (status `stopped`) if the cap runs out before every request is out. Progress arrives as `analysis-run-progress` events, or poll `GET /analysis/runs/{id}`.
+         * @description The only way a re-analysis run starts. It reads every non-Stale Offer whose result is on an older analysis version again through the Message Batches API, and answers `202` with the run. The previous result of each Offer stays current until its new one succeeds; a failed request leaves it. Refused with `no-api-key` when no key is set; with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`); with `spend-cap-reached` when what is left of this month's cap, less what batches in flight reserved, does not pay for one typical Offer's first pass and, when escalation is on, its escalation, at batch price and worst case, which can be so while `spend.state` is `ok`; with `analysis-run-active` while a run is still going; and with `nothing-to-reanalyze` when no Offer is on an older analysis (`olderVersion.count` on `GET /analysis` is 0). `actions.startRunRefusedBy` on `GET /analysis` says which of these it would answer now. The run stops sending (status `stopped`) if the cap runs out before every request is out. Progress arrives as `analysis-run-progress` events, or poll `GET /analysis/runs/{id}`.
          */
         post: {
             parameters: {
@@ -4569,6 +4569,7 @@ export interface components {
             spend: components["schemas"]["AnalysisSpend"];
             /** @description The re-analysis run still going, or null. Only one runs at a time. */
             activeRunId: number | null;
+            actions: components["schemas"]["AnalysisActions"];
             settings: components["schemas"]["SettingsState"];
         };
         /** @description Offers in each analysis status. */
@@ -4611,7 +4612,7 @@ export interface components {
             /** @description What may still be reserved: the cap less this month's spend and every reservation. Negative when the cap was lowered under what is reserved. */
             headroomUsd: number;
             /**
-             * @description Whether model calls may go out. `ok`: the cap less this month's spend and what batches in flight reserved pays for at least one typical batch call (realtime calls in flight are not counted here). `waiting-for-in-flight`: it does not, but would once the batches in flight settle, so this may clear by itself. `reached`: even with nothing in flight, this month's cap pays for no call; it clears at `resetsAt` or with a higher cap. In either held state no new call goes out, new Offers stay `pending`, re-analysis runs and Re-analyse are refused with `spend-cap-reached`, and crawling goes on.
+             * @description Whether model calls may go out. `ok`: the cap less this month's spend and what batches in flight reserved pays for at least one typical batch call (realtime calls in flight are not counted here). `waiting-for-in-flight`: it does not, but would once the batches in flight settle, so this may clear by itself. `reached`: even with nothing in flight, this month's cap pays for no call; it clears at `resetsAt` or with a higher cap. In either held state no new call goes out, new Offers stay `pending`, re-analysis runs and Re-analyse are refused with `spend-cap-reached`, and crawling goes on. A re-analysis run can be refused with `spend-cap-reached` while this is `ok`, because a run needs room for an escalation too: `actions.startRunRefusedBy` says whether it would be.
              * @enum {string}
              */
             state: "ok" | "waiting-for-in-flight" | "reached";
@@ -4620,6 +4621,15 @@ export interface components {
              * @example 2026-11-30T23:00:00.000Z
              */
             resetsAt: string;
+        };
+        AnalysisActions: {
+            /** @description `POST /analysis/runs` would start a run now. False exactly when `startRunRefusedBy` says why it would be refused. */
+            startRun: boolean;
+            /**
+             * @description The problem type `POST /analysis/runs` would answer with now, checked in this order. `no-api-key`: no key is set. `api-key-refused`: the API refuses the key that is set. `spend-cap-reached`: what is left of this month's cap, less what batches in flight reserved, does not pay for reading one typical Offer again in full at batch price, its first pass and, when escalation is on, its escalation, counted at their worst case; this can be so while `spend.state` is `ok`. `analysis-run-active`: a run is still going (`activeRunId`). `nothing-to-reanalyze`: no Offer is on an older analysis (`olderVersion.count` is 0). Null when it would start.
+             * @enum {string|null}
+             */
+            startRunRefusedBy: "no-api-key" | "api-key-refused" | "spend-cap-reached" | "analysis-run-active" | "nothing-to-reanalyze" | null;
         };
         AnalysisRun: {
             id: number;

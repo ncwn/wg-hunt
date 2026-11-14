@@ -261,6 +261,79 @@ describe("B: room for a batch request but not a realtime one", () => {
   });
 });
 
+describe("a run the cap pays the first pass of, and not the escalation", () => {
+  const HIGH: ModelChoice = { model: "claude-haiku-5-5", effort: "high" };
+
+  /** The default escalation is Haiku 5.5 at high effort too, so it costs one more pass. */
+  async function firstPassOnly(patch: Record<string, unknown> = {}) {
+    const h = boot();
+    await setKey(h);
+    const [offer] = await crawlOffers(h, 1);
+    await change(h, { effort: "high", ...patch });
+    const cap = (await spend(h)).spentUsd + nominalUsd(h, HIGH, true) * 1.5;
+    await change(h, { monthlySpendCapUsd: Math.round(cap * 1e6) / 1e6 });
+    return { h, id: offer?.id as number };
+  }
+
+  it("is refused while the cap state is ok, and GET /analysis and the Offer say so", async () => {
+    const { h, id } = await firstPassOnly();
+    const calls = h.requests.length;
+
+    const { body } = await h.json("GET", "/analysis");
+    expect(body.spend.state).toBe("ok");
+    expect(body.actions).toEqual({ startRun: false, startRunRefusedBy: "spend-cap-reached" });
+    expect(await statusOf(h, id)).toMatchObject({
+      status: "older-version",
+      next: "raise-cap",
+      at: body.spend.resetsAt,
+    });
+
+    const refused = await h.json("POST", "/analysis/runs");
+    await poll(h);
+
+    expect(refused).toMatchObject({ status: 409, body: { type: "spend-cap-reached" } });
+    expect(h.requests).toHaveLength(calls);
+    expect(h.batch.submissions).toHaveLength(0);
+  });
+
+  it("starts with escalation off", async () => {
+    const { h, id } = await firstPassOnly({ escalation: null });
+
+    expect((await h.json("GET", "/analysis")).body.actions).toEqual({
+      startRun: true,
+      startRunRefusedBy: null,
+    });
+    expect(await statusOf(h, id)).toMatchObject({ status: "older-version", next: "start-run" });
+
+    const started = await h.json("POST", "/analysis/runs");
+    await poll(h);
+
+    expect(started.status).toBe(202);
+    expect(h.batch.submissions.flat()).toHaveLength(1);
+  });
+
+  it("is announced once spend stops a run fitting, though the cap state stays ok", async () => {
+    const h = boot();
+    await setKey(h);
+    await crawlOffers(h, 1);
+    await change(h, { effort: "high" });
+    const cap = (await spend(h)).spentUsd + nominalUsd(h, HIGH, true) * 2 + 0.0001;
+    await change(h, { monthlySpendCapUsd: Math.round(cap * 1e6) / 1e6 });
+    expect((await h.json("GET", "/analysis")).body.actions.startRun).toBe(true);
+    const from = h.events.length;
+
+    // A realtime read that costs $0.0002.
+    await crawlOffers(h, 1, 9000002);
+
+    expect((await spend(h)).state).toBe("ok");
+    const announced = h.events
+      .slice(from)
+      .filter((event) => event.type === "analysis-status-changed")
+      .map((event) => (event.data as { actions: unknown }).actions);
+    expect(announced.at(-1)).toEqual({ startRun: false, startRunRefusedBy: "spend-cap-reached" });
+  });
+});
+
 describe("C: Re-analyse on one Offer", () => {
   it("goes as a batch when what a batch in flight leaves pays for its batch call and not its realtime one", async () => {
     const h = boot();

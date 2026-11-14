@@ -51,7 +51,7 @@ export function ReanalysisPanel() {
   const starting = useMutation(asking);
 
   if (view.status !== "ready") return null;
-  const { spend, olderVersion: outdated, key, activeRunId } = view.analysis;
+  const { spend, olderVersion: outdated, actions, activeRunId } = view.analysis;
   const run = shown(heard, activeRunId);
   const running = run.status === "following";
 
@@ -62,16 +62,19 @@ export function ReanalysisPanel() {
 
   const cost =
     outdated.estimatedCostUsd < 0.01 ? "less than $0.01" : usd(outdated.estimatedCostUsd);
+  const refusedBy = actions.startRunRefusedBy;
   const blocker =
-    key === "absent"
+    refusedBy === "no-api-key"
       ? "Add an Anthropic API key first, under Keys."
-      : key === "refused"
+      : refusedBy === "api-key-refused"
         ? "The Anthropic API key was refused. Replace it first, under Keys."
-        : spend.state === "reached"
-          ? "The monthly limit is reached, so reading is paused until next month or a higher limit."
-          : spend.state === "waiting-for-in-flight"
-            ? "Ads being read right now hold the rest of the monthly limit. Try again once they're done."
-            : undefined;
+        : refusedBy === "spend-cap-reached"
+          ? spend.state === "reached"
+            ? "The monthly limit is reached, so reading is paused until next month or a higher limit."
+            : spend.state === "waiting-for-in-flight"
+              ? "Ads being read right now hold the rest of the monthly limit. Try again once they're done."
+              : "What's left of the monthly limit doesn't cover reading one ad again in full, so this waits for next month or a higher limit."
+          : undefined;
 
   return (
     <div className="adv-rerun">
@@ -87,7 +90,7 @@ export function ReanalysisPanel() {
           {outcome(run.outcome)}
         </Notice>
       )}
-      {!running && outdated.count > 0 && (
+      {!running && outdated.count > 0 && refusedBy !== "analysis-run-active" && (
         <SettingRow
           title={`${offers(outdated.count)} on an older analysis, re-analyse for about ${cost}`}
           description={blocker ?? "Half price, results within an hour"}
@@ -95,7 +98,7 @@ export function ReanalysisPanel() {
             <Button
               size="sm"
               variant="secondary"
-              disabled={blocker !== undefined}
+              disabled={!actions.startRun}
               onClick={() => setAsking(true)}
             >
               Re-analyse

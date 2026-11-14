@@ -119,7 +119,7 @@ export function createAnalysis(deps: {
     unstored: (offerId) => phases.get(offerId) === "unstored",
     cap: () => {
       const { state, resetsAt } = spend.capState();
-      return { state, resetsAt };
+      return { state, resetsAt, fitsRun: spend.fitsRun() };
     },
     noRoom: () => noRoom,
     announce: (offerId) => announce(offerId),
@@ -491,6 +491,7 @@ export function createAnalysis(deps: {
     const older = batch.outdatedJobs(settings).length;
     const key = keyState(db);
     const { pending, analyzed, failed, awaiting, byStatus } = offers.analysisCounts();
+    const refusal = batch.runRefusal();
     return {
       counts: { pending, analyzed, failed },
       awaiting,
@@ -500,6 +501,7 @@ export function createAnalysis(deps: {
       olderVersion: { count: older, estimatedCostUsd: estimateReanalysisUsd(older, settings) },
       spend: spend.capState(),
       activeRunId,
+      actions: { startRun: refusal === null, startRunRefusedBy: refusal },
       settings: { source, unreadable },
     };
   }
