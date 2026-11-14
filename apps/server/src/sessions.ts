@@ -26,7 +26,7 @@ export type Sessions = {
   /** Counts as a use and renews the session. */
   isOpen(id: string): boolean;
   end(id: string): void;
-  /** If the token write fails, nothing changes. */
+  /** If the session delete or the token write fails, nothing changes. */
   rotateToken(): string;
   /** Unlike `isOpen` it does not renew, so an open stream cannot keep its own session alive. */
   check(credential: Credential): EndReason | undefined;
@@ -110,10 +110,15 @@ export function createSessions(deps: {
       notify("signed-out", `cookie:${idHash}`);
     },
     rotateToken() {
-      // The rows are keyed with the old token, so they stop matching the moment it is replaced;
-      // deleting them only tidies up.
-      const fresh = token.rotate();
-      db.delete(dashboardSessions).run();
+      // The token file can't be rolled back, so it is written last, inside the delete's
+      // transaction: a delete that fails throws before the token is touched, and a token write
+      // that fails rolls the delete back. One window remains: the commit failing after the file
+      // is renamed. The new token is then in force but the request answers 500, so it can only be
+      // read from the file; the rows left are keyed with the old token and match nothing.
+      const fresh = db.$client.transaction(() => {
+        db.delete(dashboardSessions).run();
+        return token.rotate();
+      })();
       notify("token-rotated");
       return fresh;
     },
