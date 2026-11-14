@@ -721,7 +721,7 @@ export interface paths {
          *     - `analysis-run-progress`: a re-analysis run moved on (`runId`, `status`, `stopReason`, `done`, `applied`, `total`) with `spentUsd`, the month's spend.
          *     - `spend-cap-reached`: the spend cap's `state` left `ok` (or moved between `waiting-for-in-flight` and `reached`); the data is the `AnalysisSpend` that `GET /analysis` shows as `spend`. Model calls stop and new Offers stay `pending` until what is in flight settles, the next month (`resetsAt`) or a higher cap; crawling goes on.
          *     - `spend-cap-cleared`: the spend cap's `state` is back to `ok` and model calls go out again; the data is the `AnalysisSpend`.
-         *     - `analysis-status-changed`: something every Offer's analysis status depends on changed: the Anthropic key was saved, cleared, refused or accepted again, the spend cap's `state` changed, the analysis settings were saved, or a re-analysis run started or finished. The data is the `AnalysisStatus` that `GET /analysis` returns, sent only when it differs from the last one sent. Keep the latest as the current analysis status, and read the listed Offers and any open Offer again, since their `analysisStatus` may have changed with it.
+         *     - `analysis-status-changed`: something every Offer's analysis status depends on changed: the Anthropic key was saved, cleared, refused or accepted again, the spend cap's `state` changed, what is left of the cap began or stopped paying for a re-analysis run, the analysis settings were saved, or a re-analysis run started or finished. The data is the `AnalysisStatus` that `GET /analysis` returns, sent only when it differs from the last one sent. Keep the latest as the current analysis status, and read the listed Offers and any open Offer again, since their `analysisStatus` may have changed with it.
          *     - `events-missed`: the client fell behind and some events were dropped; the data is `{missed}`, how many. Each client has at most 100 messages waiting, this one included. A newer `crawl-status-changed` or `analysis-status-changed` replaces a waiting one of its type, and a newer `analysis-progress` replaces a waiting one for the same Offer (a `reading` one never replaces a settled one, so the new result is still announced); those are not counted as missed. Past the limit the oldest events go, never the waiting `crawl-status-changed`, and one `events-missed` message waits in their place, ahead of the events that survived. Treat it like a reconnect: read `GET /offers`, `GET /analysis` and any open Offer again.
          *     - `session-ended`: the credential that opened the stream stopped working; the data is `{reason}`, one of `signed-out` (this dashboard session logged out), `token-rotated` (the access token was replaced, which ends every session) or `expired` (the session went unused too long or reached its maximum age, or the token was replaced while the server was down). It is always the last message: the server closes the stream right after it. Reconnecting with the same credential gets 401; a dashboard that rotated the token itself reconnects with its renewed cookie.
          *     The credential is checked again before each message and keep-alive, and a logout or rotation closes the stream at once, so no event reaches a client after its credential ends. These checks do not renew a session: an open stream alone does not keep its session from expiring; other requests do.
@@ -2044,7 +2044,7 @@ export interface paths {
         put?: never;
         /**
          * Run the model pass on one Offer again
-         * @description Queues the model pass for the Offer, whatever its state. Its previous result stays current until the new one succeeds. Progress arrives as `analysis-progress` events. Refused with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`), and with `analysis-in-batch` while the Offer's request waits for, or is inside, a batch: that request is already paid for, and its result arrives when the batch ends. When what is left of the spend cap pays for the Offer's call as a batch and not in realtime, the click is sent as a batch: the Offer reads `in-batch`, and its result arrives when the batch ends. A click the spend cap stops after the `202` is kept, reads `waiting-for-cap`, and is read once there is room.
+         * @description Queues the model pass for the Offer, whatever its state. Its previous result stays current until the new one succeeds. Progress arrives as `analysis-progress` events. Refused with `no-api-key` while no Anthropic key is set, with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`), with `spend-cap-reached` while the spend cap's `state` is not `ok`, or while what is left of it pays for the Offer's call neither in realtime nor as a batch (not checked while a call for the Offer is out), and with `analysis-in-batch` while the Offer's request waits for, or is inside, a batch: that request is already paid for, and its result arrives when the batch ends. When what is left of the spend cap pays for the Offer's call as a batch and not in realtime, the click is sent as a batch: the Offer reads `in-batch`, and its result arrives when the batch ends. A click the spend cap stops after the `202` is kept, reads `waiting-for-cap`, and is read once there is room.
          */
         post: {
             parameters: {
@@ -3929,7 +3929,7 @@ export interface components {
         /** @description What the nightly prune will do with the Offer: what keeps its record, and when the record and the snapshots fall due. */
         OfferRetention: {
             /**
-             * @description `not-quiet`: neither Stale nor Untracked, so no clock runs. `expiring`: quiet, and the record is deleted 90 days after it went quiet. `kept`: quiet, but `keptBecause` keeps the record; the snapshots still age.
+             * @description `not-quiet`: neither Stale nor Untracked, so no clock runs. `expiring`: quiet, and the record is deleted 90 days after it went quiet, or after nothing kept the record any more if that came later. `kept`: quiet, but `keptBecause` keeps the record; the snapshots still age.
              * @enum {string}
              */
             state: "not-quiet" | "expiring" | "kept";
@@ -4701,7 +4701,7 @@ export interface components {
             };
             /** @description Fixed constants, not settings */
             retention: {
-                /** @description An Offer record is deleted this long after it went Stale or Untracked */
+                /** @description An Offer record is deleted this long after it went Stale or Untracked, or after nothing kept the record any more if that came later */
                 recordDays: number;
                 snapshotDays: number;
                 unexpectedPageDays: number;

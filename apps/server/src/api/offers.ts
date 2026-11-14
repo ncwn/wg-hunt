@@ -312,7 +312,7 @@ const offerRecheckSchema = z
 const retentionSchema = z
   .object({
     state: z.enum(["not-quiet", "expiring", "kept"]).openapi({
-      description: `\`not-quiet\`: neither Stale nor Untracked, so no clock runs. \`expiring\`: quiet, and the record is deleted ${RECORD_DAYS} days after it went quiet. \`kept\`: quiet, but \`keptBecause\` keeps the record; the snapshots still age.`,
+      description: `\`not-quiet\`: neither Stale nor Untracked, so no clock runs. \`expiring\`: quiet, and the record is deleted ${RECORD_DAYS} days after it went quiet, or after nothing kept the record any more if that came later. \`kept\`: quiet, but \`keptBecause\` keeps the record; the snapshots still age.`,
     }),
     keptBecause: z.array(z.enum(KEEP_REASONS)).openapi({
       description:
@@ -880,7 +880,7 @@ const reanalyzeRoute = createRoute({
   tags,
   summary: "Run the model pass on one Offer again",
   description:
-    "Queues the model pass for the Offer, whatever its state. Its previous result stays current until the new one succeeds. Progress arrives as `analysis-progress` events. Refused with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`), and with `analysis-in-batch` while the Offer's request waits for, or is inside, a batch: that request is already paid for, and its result arrives when the batch ends. When what is left of the spend cap pays for the Offer's call as a batch and not in realtime, the click is sent as a batch: the Offer reads `in-batch`, and its result arrives when the batch ends. A click the spend cap stops after the `202` is kept, reads `waiting-for-cap`, and is read once there is room.",
+    "Queues the model pass for the Offer, whatever its state. Its previous result stays current until the new one succeeds. Progress arrives as `analysis-progress` events. Refused with `no-api-key` while no Anthropic key is set, with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`), with `spend-cap-reached` while the spend cap's `state` is not `ok`, or while what is left of it pays for the Offer's call neither in realtime nor as a batch (not checked while a call for the Offer is out), and with `analysis-in-batch` while the Offer's request waits for, or is inside, a batch: that request is already paid for, and its result arrives when the batch ends. When what is left of the spend cap pays for the Offer's call as a batch and not in realtime, the click is sent as a batch: the Offer reads `in-batch`, and its result arrives when the batch ends. A click the spend cap stops after the `202` is kept, reads `waiting-for-cap`, and is read once there is room.",
   request: { params: idParam },
   responses: {
     202: {

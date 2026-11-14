@@ -233,7 +233,7 @@ describe("a change to what keeps the record, between two prunes", () => {
   });
 });
 
-describe("pins from a merge or split verdict (B11)", () => {
+describe("pins from a merge or split verdict", () => {
   it("names the verdict as what keeps both Offers of a split", async () => {
     const h = bootOffers();
     ingestAds(h, { adId: 9000001, warmRent: 450 }, { adId: 9000002, warmRent: 480 });

@@ -380,7 +380,7 @@ doctor() {
 }
 
 usage() {
-  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+  awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"
 }
 
 case "${1:-}" in

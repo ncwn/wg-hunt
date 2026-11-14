@@ -93,7 +93,7 @@ describe("a stored Sweep row", () => {
   });
 
   it.each([
-    ["running with no start time (B12)", { startedAt: null }],
+    ["running with no start time", { startedAt: null }],
     ["running with no cursors", { cursors: null }],
     ["running with a category missing its cursor", { cursors: { "flatshare-room": 1 } }],
     ["running with no mode", { mode: null }],

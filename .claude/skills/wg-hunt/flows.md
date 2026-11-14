@@ -149,7 +149,7 @@ wg.sh crawl requests --limit 30      # newest first: kind, status, outcome, mark
 wg.sh watch --count 3 --timeout 10   # a few live events; the first is the current status
 ```
 
-On a quiet crawl a `watch-timeout` (exit 5) is normal; the exit codes are in [SKILL.md](SKILL.md). Without `--count`, `--timeout` is simply when `watch` stops, so it exits 0. Exit 1 with `stream-ended` means the server closed the stream, as it does when it restarts (the daily auto-update, for one), or answered without one; `stream-reset` means the connection broke. Either way, check `health` and run it again. Exit 1 with `session-ended` (and its `reason`) means the token the watch used stopped working, after a `token rotate` for one: the problem's `detail` says what to do.
+On a quiet crawl a `watch-timeout` (exit 5) is normal; the exit codes are in [SKILL.md](SKILL.md). Without `--count`, `--timeout` is simply when `watch` stops, so it exits 0 once the stream is open. Exit 1 with `stream-ended` means the server closed the stream, as it does when it restarts (the daily auto-update, for one), or answered without one; `stream-reset` means the connection broke. Either way, check `health` and run it again. Exit 1 with `session-ended` (and its `reason`) means the token the watch used stopped working, after a `token rotate` for one: the problem's `detail` says what to do.
 
 An `events-missed` line means the watcher fell behind and the server dropped events in between (`missed` says how many); it is not counted towards `--count`. What it dropped is lost, so read the state again with `offers list` and `analysis status` rather than piecing it together from the events that follow.
 

@@ -1,6 +1,6 @@
 /** Constants, not settings: the API shows them read-only. */
 
-/** After the Offer went quiet. */
+/** After the Offer went quiet, or after nothing kept the record any more if that came later. */
 export const RECORD_DAYS = 90;
 /** After its Offer went quiet. */
 export const SNAPSHOT_DAYS = 30;

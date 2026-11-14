@@ -231,7 +231,8 @@ function Retention({ storage }: { storage: Storage }) {
           <div>
             <dt>Offer records</dt>
             <dd>
-              {r.recordDays} days after the Offer goes Stale or Untracked
+              {r.recordDays} days after the Offer goes Stale or Untracked, or after nothing keeps
+              its record any more if that comes later
               <span className="adv-cell-muted">
                 . An offer you dismissed, shortlisted, contacted or marked as a scam, or that has a
                 fact you corrected or a merge or split you made, keeps its record.

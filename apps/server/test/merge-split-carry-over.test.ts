@@ -70,7 +70,7 @@ const read = (months: number) =>
 const adHash = (h: Harness, adId: string) =>
   h.runtime.db.select().from(offerAds).where(eqAd(adId)).get()?.contentHash ?? null;
 
-describe("a split keeps the seeker's marks (B8)", () => {
+describe("a split keeps the seeker's marks", () => {
   it("gives the split-off Offer the marks, the scam mark and the creation time of the Offer it left", async () => {
     const h = repostedRoom();
     const room = await detailOf(h, 9000001);
@@ -116,7 +116,7 @@ describe("a split keeps the seeker's marks (B8)", () => {
   });
 });
 
-describe("a merge declares what it carries over (B9)", () => {
+describe("a merge declares what it carries over", () => {
   it("keeps a scam mark from either side, over a 'not a scam' on the survivor", async () => {
     const h = twoRooms();
     const [first, second] = [await detailOf(h, 9000001), await detailOf(h, 9000002)];
@@ -388,7 +388,7 @@ describe("a dedupe pass ranks the Offers it merged again", () => {
 });
 
 describe("the seeker's verdicts on pairs of Ad IDs", () => {
-  it("keeps the Sibling link of two rooms the seeker says are not the same (B10)", async () => {
+  it("keeps the Sibling link of two rooms the seeker says are not the same", async () => {
     const h = twoRooms();
     const [first, second] = [await detailOf(h, 9000001), await detailOf(h, 9000002)];
     await h.json("POST", `/offers/${first.id}/merge`, { offerId: second.id });
@@ -432,7 +432,7 @@ describe("the seeker's verdicts on pairs of Ad IDs", () => {
   });
 });
 
-describe("merges while the background loops run (B17)", () => {
+describe("merges while the background loops run", () => {
   /** Offers whose one Ad ID has no stored page: each counts toward a loop's batch and is skipped. */
   function padding(h: Harness, count: number, rulesVersion: number) {
     const { db } = h.runtime;

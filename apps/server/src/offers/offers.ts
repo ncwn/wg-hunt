@@ -877,8 +877,8 @@ export function createOffers(deps: {
 
   /**
    * The one way to write what keeps an Offer's record: a mark, a fact override, a pin release.
-   * Otherwise only the nightly prune looks at the clocks, and a mark put on and taken off between
-   * two prunes would leave the old clock running. The refresh before `write` stops a clock still
+   * No other sample of the clocks sees these writes, so a mark put on and taken off between two
+   * samples would leave the old clock running. The refresh before `write` stops a clock still
    * stored from before something kept the record; the one after starts the 90 days now when
    * nothing keeps it any more.
    */
@@ -914,8 +914,7 @@ export function createOffers(deps: {
   }
 
   function releasePairPins(id: number): OfferDetail | undefined {
-    // The pin held until now, so the record's clock was not running. A clock a merge carried
-    // over, which no prune has seen pinned yet, is one the refresh before the write stops.
+    // The pin held until now, so the record's clock was not running.
     const changed = writeWhatKeeps(
       id,
       (now) =>
@@ -1189,8 +1188,9 @@ export function createOffers(deps: {
     if (parsed.status === "deleted") {
       const gone = db.$client.transaction((): IngestResult => {
         const known = db.select().from(offerAds).where(adKey(fetched.source, fetched.adId)).get();
-        // A merge may have shown the Offer since the last sample and left the clock it carried
-        // over running: stopped here, it does not outlive the page that makes the Offer quiet.
+        // The Offer may have been shown since the last sample, as when its Search was turned back
+        // on, with the clock from before still stored: stopped here, it does not outlive the page
+        // that makes the Offer quiet.
         if (known !== undefined) refreshOfferClocks(db, known.offerId, now.getTime());
         const before = known && currentAd(adsOf([known.offerId]).get(known.offerId) ?? []);
         // Reading that the page is gone is a Recheck that worked: nothing waits to retry it.

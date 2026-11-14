@@ -124,7 +124,7 @@ export function registerWatch(program: Command, ctx: Ctx): void {
     )
     .option(
       "--timeout <seconds>",
-      "stop after this long (exit 0 without --count)",
+      "stop after this long (exit 0 without --count, once the stream is open)",
       integer("--timeout", 1),
     )
     .action(async (opts: { count?: number; timeout?: number }) => {

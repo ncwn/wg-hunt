@@ -192,9 +192,9 @@ export const offers = sqliteTable("offers", {
   shortlisted: integer({ mode: "boolean" }).notNull().default(false),
   contacted: integer({ mode: "boolean" }).notNull().default(false),
   /**
-   * When the nightly prune, or a write to what keeps the record, first saw the Offer Stale or
-   * Untracked ("quiet"); cleared when it comes back. The raw snapshot's 30 days run from here,
-   * marks or not.
+   * When a sample of the clocks first saw the Offer Stale or Untracked ("quiet"), the nightly prune
+   * at the latest; cleared when it comes back. The raw snapshot's 30 days run from here, marks or
+   * not.
    */
   quietSince: integer({ mode: "timestamp_ms" }),
   /**

@@ -110,7 +110,9 @@ export function registerCrawl(program: Command, ctx: Ctx): void {
 
   crawl
     .command("resume")
-    .description("Lift a Pause or a stop; refused during a Bot check Cooldown")
+    .description(
+      "Lift a Pause or a stop; refused during a Bot check Cooldown and while all Offer data is being deleted",
+    )
     .action(async () => {
       const { client, send } = ctx.api();
       ctx.show(await send(client.POST("/crawl/resume")), statusText);
