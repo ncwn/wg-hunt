@@ -1378,7 +1378,7 @@ export function createOffers(deps: {
   let analysisContext: AnalysisContext = {
     reading: () => false,
     unstored: () => false,
-    cap: () => ({ state: "ok", resetsAt: null }),
+    cap: () => ({ state: "ok", resetsAt: null, fitsRun: true }),
     noRoom: () => new Set(),
     announce: () => {},
   };

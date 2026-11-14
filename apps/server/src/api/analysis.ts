@@ -1,6 +1,10 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import type { StartRun } from "../analysis/batch.js";
-import { RUN_STATUSES, RUN_STOP_REASONS } from "../analysis/run-status.js";
+import {
+  RUN_STATUSES,
+  RUN_STOP_REASONS,
+  START_RUN_REFUSALS,
+  type StartRunRefusal,
+} from "../analysis/run-status.js";
 import { settingsStateSchema } from "../settings-state.js";
 import { analysisStatusCounts } from "./analysis-status.js";
 import type { ApiModule } from "./context.js";
@@ -58,7 +62,7 @@ const statusSchema = z
         }),
         state: z.enum(["ok", "waiting-for-in-flight", "reached"]).openapi({
           description:
-            "Whether model calls may go out. `ok`: the cap less this month's spend and what batches in flight reserved pays for at least one typical batch call (realtime calls in flight are not counted here). `waiting-for-in-flight`: it does not, but would once the batches in flight settle, so this may clear by itself. `reached`: even with nothing in flight, this month's cap pays for no call; it clears at `resetsAt` or with a higher cap. In either held state no new call goes out, new Offers stay `pending`, re-analysis runs and Re-analyse are refused with `spend-cap-reached`, and crawling goes on.",
+            "Whether model calls may go out. `ok`: the cap less this month's spend and what batches in flight reserved pays for at least one typical batch call (realtime calls in flight are not counted here). `waiting-for-in-flight`: it does not, but would once the batches in flight settle, so this may clear by itself. `reached`: even with nothing in flight, this month's cap pays for no call; it clears at `resetsAt` or with a higher cap. In either held state no new call goes out, new Offers stay `pending`, re-analysis runs and Re-analyse are refused with `spend-cap-reached`, and crawling goes on. A re-analysis run can be refused with `spend-cap-reached` while this is `ok`, because a run needs room for an escalation too: `actions.startRunRefusedBy` says whether it would be.",
         }),
         resetsAt: z.string().openapi({
           example: "2026-11-30T23:00:00.000Z",
@@ -69,6 +73,18 @@ const statusSchema = z
     activeRunId: z.number().int().nullable().openapi({
       description: "The re-analysis run still going, or null. Only one runs at a time.",
     }),
+    actions: z
+      .object({
+        startRun: z.boolean().openapi({
+          description:
+            "`POST /analysis/runs` would start a run now. False exactly when `startRunRefusedBy` says why it would be refused.",
+        }),
+        startRunRefusedBy: z.enum(START_RUN_REFUSALS).nullable().openapi({
+          description:
+            "The problem type `POST /analysis/runs` would answer with now, checked in this order. `no-api-key`: no key is set. `api-key-refused`: the API refuses the key that is set. `spend-cap-reached`: what is left of this month's cap, less what batches in flight reserved, does not pay for reading one typical Offer again in full at batch price, its first pass and, when escalation is on, its escalation, counted at their worst case; this can be so while `spend.state` is `ok`. `analysis-run-active`: a run is still going (`activeRunId`). `nothing-to-reanalyze`: no Offer is on an older analysis (`olderVersion.count` is 0). Null when it would start.",
+        }),
+      })
+      .openapi("AnalysisActions"),
     settings: settingsStateSchema,
   })
   .openapi("AnalysisStatus");
@@ -135,7 +151,7 @@ const startRoute = createRoute({
   tags: ["Analysis"],
   summary: "Re-analyse the Offers on an older analysis, as a batch",
   description:
-    "The only way a re-analysis run starts. It reads every non-Stale Offer whose result is on an older analysis version again through the Message Batches API, and answers `202` with the run. The previous result of each Offer stays current until its new one succeeds; a failed request leaves it. Refused with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`), with `spend-cap-reached` when the cap is spent, and with `nothing-to-reanalyze` when no Offer is on an older analysis (`olderVersion.count` on `GET /analysis` is 0). The run stops sending (status `stopped`) if the cap runs out before every request is out. Progress arrives as `analysis-run-progress` events, or poll `GET /analysis/runs/{id}`.",
+    "The only way a re-analysis run starts. It reads every non-Stale Offer whose result is on an older analysis version again through the Message Batches API, and answers `202` with the run. The previous result of each Offer stays current until its new one succeeds; a failed request leaves it. Refused with `no-api-key` when no key is set; with `api-key-refused` while the API refuses the key that is set (`key: refused` on `GET /analysis`); with `spend-cap-reached` when what is left of this month's cap, less what batches in flight reserved, does not pay for one typical Offer's first pass and, when escalation is on, its escalation, at batch price and worst case, which can be so while `spend.state` is `ok`; with `analysis-run-active` while a run is still going; and with `nothing-to-reanalyze` when no Offer is on an older analysis (`olderVersion.count` on `GET /analysis` is 0). `actions.startRunRefusedBy` on `GET /analysis` says which of these it would answer now. The run stops sending (status `stopped`) if the cap runs out before every request is out. Progress arrives as `analysis-run-progress` events, or poll `GET /analysis/runs/{id}`.",
   responses: {
     202: {
       description: "The run was started",
@@ -165,33 +181,16 @@ const runRoute = createRoute({
   },
 });
 
-/** A record, so a reason added to `StartRun` fails to compile here until it has an answer. */
-const RUN_REFUSALS: Record<Extract<StartRun, { ok: false }>["reason"], () => ProblemError> = {
-  "no-key": () =>
-    new ProblemError(
-      "no-api-key",
-      "Set an Anthropic API key in Settings first. The model pass needs one.",
-    ),
-  "key-refused": () =>
-    new ProblemError(
-      "api-key-refused",
-      "The Anthropic API refused the key that is set, so the model pass would fail. Replace the key in Settings.",
-    ),
-  "spend-cap-reached": () =>
-    new ProblemError(
-      "spend-cap-reached",
-      "The spend cap has no room for a batch now (see `spend` on GET /analysis). Raise the cap in Settings, or wait for the analysis in flight to settle or for the next month.",
-    ),
-  "run-active": () =>
-    new ProblemError(
-      "analysis-run-active",
-      "A re-analysis run is still going. Start another when it has finished.",
-    ),
-  "nothing-outdated": () =>
-    new ProblemError(
-      "nothing-to-reanalyze",
-      "No Offer is on an older analysis, so there is nothing to read again. A run is only needed after the model or effort changes.",
-    ),
+/** A record, so a refusal added to `START_RUN_REFUSALS` fails to compile until it has an answer. */
+const RUN_REFUSALS: Record<StartRunRefusal, string> = {
+  "no-api-key": "Set an Anthropic API key in Settings first. The model pass needs one.",
+  "api-key-refused":
+    "The Anthropic API refused the key that is set, so the model pass would fail. Replace the key in Settings.",
+  "spend-cap-reached":
+    "What is left of this month's spend cap does not pay for reading one Offer again in full as a batch: its first pass and, when escalation is on, its escalation (see `spend` on GET /analysis). Raise the cap in Settings, or wait for the analysis in flight to settle or for the next month.",
+  "analysis-run-active": "A re-analysis run is still going. Start another when it has finished.",
+  "nothing-to-reanalyze":
+    "No Offer is on an older analysis, so there is nothing to read again. A run is only needed after the model or effort changes.",
 };
 
 export const registerAnalysis: ApiModule = (api, { analysis }) => {
@@ -199,7 +198,7 @@ export const registerAnalysis: ApiModule = (api, { analysis }) => {
 
   api.openapi(startRoute, (c) => {
     const started = analysis.batch.startRun();
-    if (!started.ok) throw RUN_REFUSALS[started.reason]();
+    if (!started.ok) throw new ProblemError(started.reason, RUN_REFUSALS[started.reason]);
     return c.json(started.run, 202);
   });
 

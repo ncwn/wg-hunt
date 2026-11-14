@@ -29,7 +29,21 @@ function byStatusText(counts: Status["byStatus"]): string | undefined {
   return held.length === 0 ? undefined : held.map(([s, n]) => `${s} ${n}`).join(", ");
 }
 
+type RunRefusal = NonNullable<Status["actions"]["startRunRefusedBy"]>;
+
+// Typed as a record so that a refusal added to the API fails to compile here.
+const RUN_REFUSALS: Record<RunRefusal, string> = {
+  "no-api-key": "no-api-key: no Anthropic key is set",
+  "api-key-refused": "api-key-refused: the Anthropic API refuses the key that is set",
+  "spend-cap-reached":
+    "spend-cap-reached: what is left of the cap does not pay for reading one Offer again in full",
+  "analysis-run-active": "analysis-run-active: a run is still going",
+  "nothing-to-reanalyze": "nothing-to-reanalyze: no Offer is on an older analysis",
+};
+
 function statusText(status: Status): string {
+  // An older server sends no `actions`.
+  const refusal = status.olderVersion.count > 0 ? status.actions?.startRunRefusedBy : undefined;
   return pairs([
     ["Anthropic key", status.key],
     ["Analysed", status.counts.analyzed],
@@ -42,6 +56,7 @@ function statusText(status: Status): string {
       "On an older analysis",
       `${status.olderVersion.count} Offers, about ${usd(status.olderVersion.estimatedCostUsd)} to re-analyse`,
     ],
+    ["A run would be refused", refusal ? (RUN_REFUSALS[refusal] ?? refusal) : undefined],
     [
       `Spend ${status.spend.month}`,
       `${usd(status.spend.spentUsd)} of ${usd(status.spend.capUsd)}${capNote(status.spend)}`,

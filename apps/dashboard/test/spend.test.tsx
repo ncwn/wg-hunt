@@ -2,6 +2,7 @@
 
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { ANALYSIS_PREFIX } from "../../../packages/core/src/analysis/prompt.js";
 import {
   fakeBatchProvider,
   fakeProvider,
@@ -291,6 +292,35 @@ describe("Settings: the older-analysis prompt", () => {
 
     expect(prompt.textContent).toMatch(/for about \$0\.0\d/);
     expect(screen.getByRole("button", { name: "Re-analyse" })).toBeTruthy();
+  });
+
+  it("is disabled, and says why, while the limit pays for reading an ad once and not in full", async () => {
+    const { server } = await boot(2);
+    await changeSettings(server, { model: "claude-sonnet-5-5", effort: "medium" });
+    const { spend } = server.runtime.analysis;
+    const pass = (model: string, effort: "medium" | "high") =>
+      (spend.estimateMicros(
+        { model, effort, prefix: ANALYSIS_PREFIX, userTurn: "x".repeat(8_000) },
+        { batch: true },
+      ) ?? Number.POSITIVE_INFINITY) / 1e6;
+    // The escalation is Haiku 5.5 at high effort.
+    const cap =
+      spend.spentUsd() + pass("claude-sonnet-5-5", "medium") + pass("claude-haiku-5-5", "high") / 2;
+    await changeSettings(server, { monthlySpendCapUsd: Math.round(cap * 1e6) / 1e6 });
+    const status = await (await server.call("GET", "/analysis")).json();
+    expect(status.spend.state).toBe("ok");
+    expect(status.actions.startRunRefusedBy).toBe("spend-cap-reached");
+
+    await openSettings(server);
+
+    expect(
+      await screen.findByText(
+        "What's left of the monthly limit doesn't cover reading one ad again in full, so this waits for next month or a higher limit.",
+      ),
+    ).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Re-analyse" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 
   it("is not shown when every Offer is on the current analysis", async () => {

@@ -74,6 +74,8 @@ async function analysedOffers(h: Boot, count: number) {
 const status = async (h: Boot) => (await h.json("GET", "/analysis")).body;
 const offerOf = async (h: Boot, id: number) => (await h.json("GET", `/offers/${id}`)).body;
 const startRun = (h: Boot) => h.json("POST", "/analysis/runs");
+const refusedBy = async (h: Boot, type: string) =>
+  expect((await status(h)).actions).toEqual({ startRun: false, startRunRefusedBy: type });
 const poll = (h: Boot) => h.runtime.analysis.pollBatches();
 
 describe("the analysis version", () => {
@@ -483,6 +485,7 @@ describe("POST /analysis/runs", () => {
     const h = boot();
     await setKey(h);
     await analysedOffers(h, 1);
+    await refusedBy(h, "nothing-to-reanalyze");
 
     const refused = await startRun(h);
 
@@ -495,6 +498,7 @@ describe("POST /analysis/runs", () => {
 
   it("answers 409 no-api-key without a key", async () => {
     const h = boot();
+    await refusedBy(h, "no-api-key");
     const refused = await startRun(h);
     expect(refused.status).toBe(409);
     expect(refused.body.type).toBe("no-api-key");
@@ -507,6 +511,7 @@ describe("POST /analysis/runs", () => {
     await analysedOffers(h, 2);
     await useSonnet(h);
     expect((await status(h)).key).toBe("refused");
+    await refusedBy(h, "api-key-refused");
 
     const refused = await startRun(h);
 
@@ -523,6 +528,7 @@ describe("POST /analysis/runs", () => {
     await useSonnet(h);
     await startRun(h);
     await poll(h);
+    await refusedBy(h, "analysis-run-active");
 
     const second = await startRun(h);
 

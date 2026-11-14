@@ -225,6 +225,34 @@ describe("human output", () => {
   });
 });
 
+describe("analysis status with Offers on an older analysis", () => {
+  type Status = Record<string, unknown>;
+  async function statusOut(change: (status: Status) => Status) {
+    const server = await serverWith();
+    const wg = cliFor(server.runtime, {
+      fetch: async (request) => {
+        const response = await server.runtime.app.request(request);
+        if (new URL(request.url).pathname !== "/api/v1/analysis") return response;
+        const status = (await response.json()) as Status;
+        return Response.json(
+          change({ ...status, olderVersion: { count: 2, estimatedCostUsd: 0.02 } }),
+        );
+      },
+    });
+    return (await wg("analysis", "status")).stdout;
+  }
+
+  it("says why a run would be refused", async () => {
+    expect(await statusOut((status) => status)).toMatch(
+      /^A run would be refused: +no-api-key: no Anthropic key is set$/m,
+    );
+  });
+
+  it("says nothing of it when an older server sends no actions", async () => {
+    expect(await statusOut(({ actions: _actions, ...status }) => status)).not.toMatch(/refused/);
+  });
+});
+
 describe("crawl status while Offer data is deleted", () => {
   it("says a Resume waits for the deletion, not a Cooldown", async () => {
     const server = await serverWith();

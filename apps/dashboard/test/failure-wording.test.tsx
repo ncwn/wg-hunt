@@ -63,6 +63,7 @@ describe("a failure without a problem body", () => {
               ...status,
               key: "present",
               olderVersion: { ...status.olderVersion, count: 2, estimatedCostUsd: 0.02 },
+              actions: { startRun: true, startRunRefusedBy: null },
             });
           })
         : undefined;

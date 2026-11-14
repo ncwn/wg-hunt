@@ -285,7 +285,7 @@ describe("deriveAnalysisStatus", () => {
     owed: false,
     noRoom: false,
     key: "present",
-    cap: { state: "ok", resetsAt: "2026-11-30T23:00:00.000Z" },
+    cap: { state: "ok", resetsAt: "2026-11-30T23:00:00.000Z", fitsRun: true },
     now: Date.parse("2026-11-09T12:00:00Z"),
   };
   const at = (over: Partial<AnalysisStatusInput>) => deriveAnalysisStatus({ ...base, ...over });
@@ -300,7 +300,9 @@ describe("deriveAnalysisStatus", () => {
     expect(at({}).status).toBe("queued");
     expect(at({ key: "absent" }).status).toBe("waiting-for-key");
     expect(at({ key: "refused" }).status).toBe("key-refused");
-    expect(at({ cap: { state: "reached", resetsAt: "2026-11-30T23:00:00.000Z" } })).toMatchObject({
+    expect(
+      at({ cap: { state: "reached", resetsAt: "2026-11-30T23:00:00.000Z", fitsRun: false } }),
+    ).toMatchObject({
       status: "waiting-for-cap",
       at: "2026-11-30T23:00:00.000Z",
     });
@@ -323,7 +325,11 @@ describe("deriveAnalysisStatus", () => {
     );
     const over = { ...failure("overloaded"), at: base.now - 60 * MINUTE };
     expect(
-      at({ state: "failed", failure: over, cap: { state: "reached", resetsAt: null } }).status,
+      at({
+        state: "failed",
+        failure: over,
+        cap: { state: "reached", resetsAt: null, fitsRun: false },
+      }).status,
     ).toBe("waiting-for-cap");
   });
 
@@ -378,7 +384,9 @@ describe("deriveAnalysisStatus", () => {
       for (const status of [kept, lost]) {
         expect(at({ ...status, key: "absent" }).next).toBe("recheck");
         expect(at({ ...status, key: "refused" }).next).toBe("recheck");
-        expect(at({ ...status, cap: { state: "reached", resetsAt: null } }).next).toBe("recheck");
+        expect(
+          at({ ...status, cap: { state: "reached", resetsAt: null, fitsRun: false } }).next,
+        ).toBe("recheck");
       }
       expect(at({ state: "failed", failure: failure(kind) })).toMatchObject({
         status: "waiting-for-page",
@@ -391,7 +399,10 @@ describe("deriveAnalysisStatus", () => {
   it("says an owed escalation no batch holds waits for the cap or the key, not that it is read", () => {
     const owed = { state: "analyzed" as const, provisional: true };
     expect(
-      at({ ...owed, cap: { state: "reached", resetsAt: "2026-11-30T23:00:00.000Z" } }),
+      at({
+        ...owed,
+        cap: { state: "reached", resetsAt: "2026-11-30T23:00:00.000Z", fitsRun: false },
+      }),
     ).toEqual({
       status: "waiting-for-cap",
       next: "raise-cap",
@@ -416,7 +427,7 @@ describe("deriveAnalysisStatus", () => {
       at({
         ...owed,
         held: { stage: 2, since: new Date(base.now) },
-        cap: { state: "reached", resetsAt: null },
+        cap: { state: "reached", resetsAt: null, fitsRun: false },
       }).status,
     ).toBe("provisional");
   });
@@ -426,7 +437,7 @@ describe("deriveAnalysisStatus", () => {
     expect(
       at({
         held: { stage: 1, since: new Date(base.now) },
-        cap: { state: "reached", resetsAt: null },
+        cap: { state: "reached", resetsAt: null, fitsRun: false },
       }).status,
     ).toBe("in-batch");
   });
@@ -445,7 +456,9 @@ describe("deriveAnalysisStatus", () => {
   });
 
   it("tells waiting for what is in flight from a reached cap", () => {
-    expect(at({ cap: { state: "waiting-for-in-flight", resetsAt: base.cap.resetsAt } })).toEqual({
+    expect(
+      at({ cap: { state: "waiting-for-in-flight", resetsAt: base.cap.resetsAt, fitsRun: false } }),
+    ).toEqual({
       status: "waiting-for-in-flight",
       next: "wait",
       reason: null,
@@ -453,9 +466,10 @@ describe("deriveAnalysisStatus", () => {
       willRead: true,
     });
     const owed = { state: "analyzed" as const, provisional: true };
-    expect(at({ ...owed, cap: { state: "waiting-for-in-flight", resetsAt: null } }).status).toBe(
-      "waiting-for-in-flight",
-    );
+    expect(
+      at({ ...owed, cap: { state: "waiting-for-in-flight", resetsAt: null, fitsRun: false } })
+        .status,
+    ).toBe("waiting-for-in-flight");
   });
 
   it("says an owed Re-analyse click is queued, whatever the Offer's state, unless the key or the cap stops it", () => {
@@ -480,10 +494,11 @@ describe("deriveAnalysisStatus", () => {
     expect(at({ ...analyzed, key: "absent" }).status).toBe("waiting-for-key");
     expect(at({ ...analyzed, key: "refused" }).status).toBe("key-refused");
     expect(
-      at({ ...analyzed, cap: { state: "reached", resetsAt: base.cap.resetsAt } }),
+      at({ ...analyzed, cap: { state: "reached", resetsAt: base.cap.resetsAt, fitsRun: false } }),
     ).toMatchObject({ status: "waiting-for-cap", at: base.cap.resetsAt });
     expect(
-      at({ ...analyzed, cap: { state: "waiting-for-in-flight", resetsAt: null } }).status,
+      at({ ...analyzed, cap: { state: "waiting-for-in-flight", resetsAt: null, fitsRun: false } })
+        .status,
     ).toBe("waiting-for-in-flight");
     expect(at({ ...analyzed, reading: true }).status).toBe("reading");
     expect(at({ ...analyzed, stale: true }).status).toBe("stale");
@@ -493,7 +508,9 @@ describe("deriveAnalysisStatus", () => {
   });
 
   it("says an Offer whose own call the cap cannot pay for waits for the cap, as a reached cap does", () => {
-    const reached = { cap: { state: "reached" as const, resetsAt: base.cap.resetsAt } };
+    const reached = {
+      cap: { state: "reached" as const, resetsAt: base.cap.resetsAt, fitsRun: false },
+    };
     const noRoom = { noRoom: true };
     for (const state of [
       {},
@@ -523,7 +540,10 @@ describe("deriveAnalysisStatus", () => {
     expect(at({ ...owed, stale: true }).status).toBe("stale");
     expect(at({ ...owed, held: { stage: 1, since: new Date(base.now) } }).status).toBe("in-batch");
     expect(
-      at({ ...owed, cap: { state: "waiting-for-in-flight", resetsAt: base.cap.resetsAt } }).status,
+      at({
+        ...owed,
+        cap: { state: "waiting-for-in-flight", resetsAt: base.cap.resetsAt, fitsRun: false },
+      }).status,
     ).toBe("waiting-for-in-flight");
     expect(at({ state: "failed", failure: failure("overloaded"), ...noRoom }).status).toBe(
       "retry-at",
@@ -558,7 +578,7 @@ describe("deriveAnalysisStatus", () => {
     });
     expect(at({ ...unstored, key: "refused" }).next).toBe("replace-key");
     expect(
-      at({ ...unstored, cap: { state: "reached", resetsAt: base.cap.resetsAt } }),
+      at({ ...unstored, cap: { state: "reached", resetsAt: base.cap.resetsAt, fitsRun: false } }),
     ).toMatchObject({ status: "needs-click", next: "raise-cap", at: base.cap.resetsAt });
     expect(at({ ...unstored, stale: true }).status).toBe("stale");
     expect(at({ ...unstored, held: { stage: 1, since: new Date(base.now) } }).status).toBe(
@@ -571,8 +591,12 @@ describe("deriveAnalysisStatus", () => {
     const lost = { state: "analyzed" as const, provisional: true, failure: failure("refused") };
     const older = { state: "analyzed" as const, olderVersion: true };
     const click = { state: "failed" as const, failure: failure("truncated") };
-    const reached = { cap: { state: "reached" as const, resetsAt: base.cap.resetsAt } };
-    const inFlight = { cap: { state: "waiting-for-in-flight" as const, resetsAt: null } };
+    const reached = {
+      cap: { state: "reached" as const, resetsAt: base.cap.resetsAt, fitsRun: false },
+    };
+    const inFlight = {
+      cap: { state: "waiting-for-in-flight" as const, resetsAt: null, fitsRun: false },
+    };
 
     expect(at(kept).next).toBe("reanalyze");
     expect(at(older).next).toBe("start-run");

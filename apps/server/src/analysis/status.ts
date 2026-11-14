@@ -67,7 +67,8 @@ export type AnalysisStatusInput = {
   /** The worker last found that what is left of the cap pays for neither of this Offer's calls. */
   noRoom: boolean;
   key: KeyState;
-  cap: { state: CapState; resetsAt: string | null };
+  /** `fitsRun`: what is left of the cap pays for one Offer's whole read in a run. */
+  cap: { state: CapState; resetsAt: string | null; fitsRun: boolean };
   /** Epoch ms. */
   now: number;
 };
@@ -152,6 +153,9 @@ function untilClicked(status: AnalysisStatus, input: AnalysisStatusInput): Analy
   if (input.cap.state === "reached")
     return { ...status, next: "raise-cap", at: input.cap.resetsAt };
   if (input.cap.state === "waiting-for-in-flight") return { ...status, next: "raise-cap" };
+  if (status.next === "start-run" && !input.cap.fitsRun) {
+    return { ...status, next: "raise-cap", at: input.cap.resetsAt };
+  }
   return status;
 }
 

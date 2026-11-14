@@ -32,7 +32,12 @@ import { estimateReanalysisUsd } from "./estimate.js";
 import { keyReportingBatch, keyState } from "./key.js";
 import type { OfferReader } from "./read-offer.js";
 import { type AnalysisPlan, makeRun } from "./record.js";
-import { type RunStatus, type RunStopReason, settledOutcome } from "./run-status.js";
+import {
+  type RunStatus,
+  type RunStopReason,
+  type StartRunRefusal,
+  settledOutcome,
+} from "./run-status.js";
 import type { SpendLedger } from "./spend.js";
 import { usdToMicros } from "./spend.js";
 import { analysisVersion, onOlderAnalysis } from "./version.js";
@@ -75,12 +80,7 @@ export type RunView = {
   stopReason: RunStopReason | null;
 };
 
-export type StartRun =
-  | { ok: true; run: RunView }
-  | {
-      ok: false;
-      reason: "no-key" | "key-refused" | "spend-cap-reached" | "run-active" | "nothing-outdated";
-    };
+export type StartRun = { ok: true; run: RunView } | { ok: false; reason: StartRunRefusal };
 
 type StoredRun = AnalysisRunRow & { offerCount: number };
 
@@ -394,15 +394,22 @@ export function createBatchAnalysis(deps: {
    * A refused key would fail every request `unauthorized`, and a run with nothing outdated would
    * just say "succeeded".
    */
+  function runRefusal(): StartRunRefusal | null {
+    if (keyOf() === undefined) return "no-api-key";
+    if (keyState(db) === "refused") return "api-key-refused";
+    if (!ledger.fitsRun()) return "spend-cap-reached";
+    if (activeRunId() !== undefined) return "analysis-run-active";
+    if (outdatedJobs(loadAnalysisSettings(db)).length === 0) return "nothing-to-reanalyze";
+    return null;
+  }
+
   function startRun(): StartRun {
-    if (keyOf() === undefined) return { ok: false, reason: "no-key" };
-    if (keyState(db) === "refused") return { ok: false, reason: "key-refused" };
-    if (ledger.sync().state !== "ok") return { ok: false, reason: "spend-cap-reached" };
-    if (activeRunId() !== undefined) return { ok: false, reason: "run-active" };
+    ledger.sync();
+    const refusal = runRefusal();
+    if (refusal !== null) return { ok: false, reason: refusal };
     const settings = loadAnalysisSettings(db);
     const plan = planOf(settings);
     const jobs = outdatedJobs(settings);
-    if (jobs.length === 0) return { ok: false, reason: "nothing-outdated" };
     const run = db.$client.transaction(() => {
       const row = db
         .insert(analysisRuns)
@@ -983,6 +990,7 @@ export function createBatchAnalysis(deps: {
       });
     },
     outdatedJobs,
+    runRefusal,
     startRun,
     run(runId: number): RunView | undefined {
       settleIdleRuns();
