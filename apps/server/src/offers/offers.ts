@@ -1850,6 +1850,8 @@ export function createOffers(deps: {
       absorbed: keeps(absorbed),
     });
     db.delete(offers).where(eq(offers.id, absorbedId)).run();
+    // Two quiet halves can make a shown room, whose carried clocks must stop now, not at the next prune.
+    refreshOfferClocks(db, survivorId, now.getTime());
   }
 
   function afterMerges(merges: { offerId: number; mergedInto: number }[]): void {

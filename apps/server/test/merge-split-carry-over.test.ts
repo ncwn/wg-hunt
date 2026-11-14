@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import type { AnalysisRun, OwedEscalation } from "../src/analysis/record.js";
 import { offerAds, offerPairOverrides, offers } from "../src/db/schema.js";
+import { mergedRow } from "../src/offers/carry-over.js";
 import { type AdSpec, adPage, ingestAds, OTHER_ROOM_TEXT, photo } from "./dedupe-harness.js";
 import { bootOffers, MINUTE } from "./offers-harness.js";
 
@@ -133,10 +134,23 @@ describe("a merge declares what it carries over (B9)", () => {
     const [early, late] = [new Date(1_000), new Date(2_000)];
     setRow(h, first.id, { quietSince: early, recordClockSince: late });
     setRow(h, second.id, { quietSince: late, recordClockSince: early });
+    const [survivor, absorbed] = [rowOf(h, first.id), rowOf(h, second.id)];
+    if (survivor === undefined || absorbed === undefined) throw new Error("expected both Offers");
 
     await h.json("POST", `/offers/${first.id}/merge`, { offerId: second.id });
 
-    expect(rowOf(h, first.id)).toMatchObject({ quietSince: late, recordClockSince: late });
+    // The "same room" verdict pins the record, which stops its clock; the carry-over is the rule's.
+    expect(rowOf(h, first.id)).toMatchObject({ quietSince: late, recordClockSince: null });
+    const ctx = {
+      takesOver: true,
+      currentHash: null,
+      pairPinned: { survivor: false, absorbed: false },
+      now: new Date(h.clock.now),
+    };
+    expect(mergedRow(survivor, absorbed, ctx)).toMatchObject({
+      quietSince: late,
+      recordClockSince: late,
+    });
   });
 
   it("stops a clock when one side was not quiet or was kept", async () => {
@@ -144,10 +158,23 @@ describe("a merge declares what it carries over (B9)", () => {
     const [first, second] = [await detailOf(h, 9000001), await detailOf(h, 9000002)];
     setRow(h, first.id, { quietSince: new Date(1_000), recordClockSince: new Date(1_000) });
     setRow(h, second.id, { quietSince: new Date(2_000), recordClockSince: null });
+    const [survivor, absorbed] = [rowOf(h, second.id), rowOf(h, first.id)];
+    if (survivor === undefined || absorbed === undefined) throw new Error("expected both Offers");
 
     await h.json("POST", `/offers/${second.id}/merge`, { offerId: first.id });
 
     expect(rowOf(h, second.id)).toMatchObject({
+      quietSince: new Date(2_000),
+      recordClockSince: null,
+    });
+    // The merge's pin alone would stop the record clock; the rule must too.
+    const ctx = {
+      takesOver: false,
+      currentHash: null,
+      pairPinned: { survivor: false, absorbed: false },
+      now: new Date(h.clock.now),
+    };
+    expect(mergedRow(survivor, absorbed, ctx)).toMatchObject({
       quietSince: new Date(2_000),
       recordClockSince: null,
     });

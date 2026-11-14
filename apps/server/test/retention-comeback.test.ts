@@ -4,7 +4,15 @@ import { offerAds, offers, searchMatches, seenAds } from "../src/db/schema.js";
 import { adPage } from "./dedupe-harness.js";
 import { adapterFixture } from "./fixtures/search-pages.js";
 import { bootOffers, HOUR } from "./offers-harness.js";
-import { DAY, goStale, nights, oneOffer, recordExists } from "./retention-harness.js";
+import {
+  DAY,
+  goStale,
+  type Harness,
+  nights,
+  oneOffer,
+  recordExists,
+  snapshotExists,
+} from "./retention-harness.js";
 import { berlin, bootSweep } from "./sweep-harness.js";
 
 describe("an Offer that comes back and goes quiet again between two prunes", () => {
@@ -121,6 +129,72 @@ describe("a room a merge shows again", () => {
 
     nights(h, 10);
     expect(recordExists(h, room)).toBe(true);
+  });
+
+  async function quietHalves() {
+    const h = bootOffers();
+    const [fresh, stale] = ["9000001", "9000002"];
+    h.site.cards = h.freshCards([Number(fresh), Number(stale)]);
+    for (const adId of [fresh, stale]) h.site.pages.set(Number(adId), adPage({ adId: +adId }));
+    await h.addSearch();
+    await h.crawl();
+    const { items } = (await h.json("GET", "/offers")).body;
+    expect(items).toHaveLength(1);
+    const room = items[0].id as number;
+    const db = h.runtime.db;
+    db.update(offerAds)
+      .set({ lastBumpAt: new Date(h.clock.now - 20 * DAY) })
+      .where(eq(offerAds.adId, stale))
+      .run();
+    db.delete(searchMatches).where(eq(searchMatches.adId, fresh)).run();
+    const half = 77;
+    const row = db.select().from(offers).where(eq(offers.id, room)).get();
+    if (row === undefined) throw new Error("expected the room's Offer");
+    db.insert(offers)
+      .values({ ...row, id: half })
+      .run();
+    db.update(offerAds).set({ offerId: half }).where(eq(offerAds.adId, fresh)).run();
+    const long = new Date(h.clock.now - 85 * DAY);
+    db.update(offers).set({ quietSince: long, recordClockSince: long }).run();
+    return { h, room, half, fresh };
+  }
+
+  async function turnSearchOff(h: Harness) {
+    const [search] = (await h.json("GET", "/searches")).body.items;
+    await h.json("PATCH", `/searches/${search.id}`, { enabled: false });
+  }
+
+  it("keeps the record 90 days from a dedupe merge when its Search is turned off before any prune", async () => {
+    const { h, room } = await quietHalves();
+
+    expect(h.runtime.offers.dedupePass()).toBe(1);
+    expect((await h.json("GET", `/offers/${room}`)).body.retention.state).toBe("not-quiet");
+    const mergedAt = h.clock.now;
+
+    h.clock.now += 6 * HOUR;
+    await turnSearchOff(h);
+    const quiet = (await h.json("GET", `/offers/${room}`)).body.retention;
+    expect.soft(new Date(quiet.recordExpiresAt).getTime()).toBeGreaterThan(mergedAt + 89 * DAY);
+
+    nights(h, 10);
+    expect(recordExists(h, room)).toBe(true);
+  });
+
+  it("keeps the snapshot 30 days from a manual merge when its Search is turned off before any prune", async () => {
+    const { h, room, half, fresh } = await quietHalves();
+
+    expect((await h.json("POST", `/offers/${room}/merge`, { offerId: half })).status).toBe(200);
+    expect((await h.json("GET", `/offers/${room}`)).body.retention.state).toBe("not-quiet");
+    const mergedAt = h.clock.now;
+
+    h.clock.now += 6 * HOUR;
+    await turnSearchOff(h);
+    const quiet = (await h.json("GET", `/offers/${room}`)).body.retention;
+    expect(quiet.keptBecause).toEqual(["pair-override"]);
+    expect.soft(new Date(quiet.snapshotExpiresAt).getTime()).toBeGreaterThan(mergedAt + 29 * DAY);
+
+    nights(h, 10);
+    expect(snapshotExists(h, fresh)).toBe(true);
   });
 });
 
