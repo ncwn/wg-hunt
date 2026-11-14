@@ -77,12 +77,12 @@ const queryOf = (view: OffersView, limit: number, cursor?: string) => ({
   ...(cursor !== undefined && { cursor }),
 });
 
-const inView = (view: OffersView, band: BandId) =>
+const inView = (view: OffersView, offer: Pick<OfferSummary, "band" | "marks">) =>
   view.shortlisted
-    ? false // nothing new is shortlisted yet
+    ? offer.marks.shortlisted
     : view.band === undefined
-      ? band !== "hidden" || view.showHidden
-      : view.band === band;
+      ? offer.band !== "hidden" || view.showHidden
+      : view.band === offer.band;
 
 const readPage = (api: ApiClient, view: OffersView, limit: number, cursor?: string) =>
   ask(() => api.GET("/offers", { params: { query: queryOf(view, limit, cursor) } }));
@@ -141,7 +141,7 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
       setState({ status: "failed", failure: page });
       return;
     }
-    const announced = early.current.filter((offer) => inView(shown.current, offer.band));
+    const announced = early.current.filter((offer) => inView(shown.current, offer));
     early.current = [];
     setState({
       status: "ready",
@@ -208,7 +208,7 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
       }
       if (event.type === "offer-added") {
         const offer = event.data;
-        if (!inView(shown.current, offer.band)) return;
+        if (!inView(shown.current, offer)) return;
         appended.current += 1;
         setState((now) =>
           now.status === "ready" ? { ...now, items: insertInBand(offer, now.items) } : now,
@@ -216,8 +216,10 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
         if (latest.current.status !== "ready") {
           early.current = [offer, ...early.current.filter((seen) => seen.id !== offer.id)];
         }
-        // The default order is the one placed above; any other sort needs the server.
-        if (shown.current.sort !== "recency") later.schedule();
+        // The default order is the one placed above; any other sort needs the server. A shortlisted
+        // Offer is announced only when split off another, whose title the split may have changed,
+        // and no event says so.
+        if (shown.current.sort !== "recency" || shown.current.shortlisted) later.schedule();
         return;
       }
       if (event.type === "offer-merged") {
@@ -237,7 +239,7 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
           if (now.status !== "ready") return now;
           const offer = now.items.find((item) => item.id === offerId);
           if (offer === undefined) return now;
-          if (!shown.current.shortlisted && !inView(shown.current, moved)) {
+          if (!shown.current.shortlisted && !inView(shown.current, { ...offer, band: moved })) {
             return { ...now, items: now.items.filter((item) => item.id !== offerId) };
           }
           return {
