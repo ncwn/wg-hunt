@@ -80,7 +80,7 @@ export const RELATED_CARRY_OVER = {
   pairOverrides:
     "Merge: every pair across the two becomes `same`. Split: every pair of the leaving Ad ID with the ones staying becomes `different`.",
   analysisItems:
-    "Merge: a request still queued or in a batch for the words the merged Offer shows follows into the survivor, unless the merged Offer has read further into those words than the absorbed one had (a first pass where it had nothing, or the final result where it awaited an escalation). So unread words are not sent again and a Re-analyse click's request is not lost, while a late answer cannot undo a newer result. The survivor keeps one request per words, the one furthest along. Everything else goes with the absorbed Offer; an answer that then finds no request is still billed. Split: they stay with the Offer left behind.",
+    "Merge: a request still queued or in a batch for the words the merged Offer shows ends up on the survivor only if the merged Offer has read no further into those words than the request's own Offer had (`readDepth`: nothing, a first pass awaiting its escalation, the final result); the survivor's own that fail this are withdrawn. A merged Offer that owes a Re-analyse click, with no read of either side in flight, keeps both sides' waiting requests for the merged words whatever the read depths, because the answer to any request waiting on an Offer that owes a click ends that click, so it is the read the click asked for whoever queued it; withdrawing it would mean a second paid read. A read that is out answers the click itself, so then the depth rule alone applies. So unread words are not sent again and a Re-analyse click's request is not lost, while a late answer cannot undo a newer result. The survivor keeps one request per words, the one furthest along. The absorbed Offer's others go with it. An answer that then finds no request is still billed. Split: a request still queued or in a batch for the leaving Ad ID's words follows it into the new Offer, unless the Offer left behind still shows those words; every other request stays. So the new Offer neither sends its words again nor resends an escalation it took over.",
   links: "Written afresh for every Ad ID involved.",
   tombstone:
     "Merge: the absorbed id points at the survivor, and so does every id that pointed at the absorbed one. Split: none.",
@@ -102,10 +102,16 @@ export type SplitContext = {
   now: Date;
 };
 
-const readWords = (row: OfferRow): string | null =>
-  row.analysisState === "analyzed"
-    ? (parseStoredAnalysis(row.analysis).run?.contentHash ?? null)
-    : null;
+export function readDepth(
+  row: Pick<OfferRow, "analysisState" | "analysis">,
+  words: string | null,
+): 0 | 1 | 2 {
+  const stored = parseStoredAnalysis(row.analysis);
+  if (words === null || row.analysisState !== "analyzed" || stored.run?.contentHash !== words) {
+    return 0;
+  }
+  return stored.escalation === undefined ? 2 : 1;
+}
 
 const earlier = (a: Date | null, b: Date | null): Date | null =>
   a === null || b === null ? (a ?? b) : a.getTime() <= b.getTime() ? a : b;
@@ -113,11 +119,13 @@ const earlier = (a: Date | null, b: Date | null): Date | null =>
 export function mergedRow(survivor: OfferRow, absorbed: OfferRow, ctx: MergeContext): OfferRow {
   const page = ctx.takesOver ? absorbed : survivor;
   const other = ctx.takesOver ? survivor : absorbed;
+  const pageDepth = readDepth(page, ctx.currentHash);
+  const otherDepth = readDepth(other, ctx.currentHash);
+  const escalated = (row: OfferRow) => parseStoredAnalysis(row.analysis).run?.escalated === true;
   const words =
-    ctx.currentHash !== null && readWords(page) !== ctx.currentHash
-      ? readWords(other) === ctx.currentHash
-        ? other
-        : page
+    otherDepth > pageDepth ||
+    (otherDepth === pageDepth && otherDepth > 0 && escalated(other) && !escalated(page))
+      ? other
       : page;
   const value = <K extends keyof OfferRow>(key: K, rule: MergeRule): OfferRow[K] => {
     const mine = survivor[key];
@@ -166,7 +174,7 @@ export function mergedRow(survivor: OfferRow, absorbed: OfferRow, ctx: MergeCont
 }
 
 export function splitRow(source: OfferRow, ctx: SplitContext): Omit<OfferRow, "id"> {
-  const ownWords = ctx.leavingHash !== null && readWords(source) === ctx.leavingHash;
+  const ownWords = readDepth(source, ctx.leavingHash) > 0;
   const value = <K extends keyof OfferRow>(key: K, rule: SplitRule): OfferRow[K] | undefined => {
     switch (rule) {
       case "new":

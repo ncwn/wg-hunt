@@ -67,7 +67,7 @@ import { isPairPinned, refreshOfferClocks } from "../retention/clocks.js";
 import { type OfferRetention, offerRetention } from "../retention/view.js";
 import { loadSeeking } from "../seeking.js";
 import { cardKey } from "./card-key.js";
-import { mergedRow, splitRow } from "./carry-over.js";
+import { mergedRow, readDepth, splitRow } from "./carry-over.js";
 import {
   ADOPT_RETRY_DAYS,
   type AdoptFailures,
@@ -203,6 +203,8 @@ export type AnalysisJob = {
   stale: boolean;
   wordsChanged: boolean;
   contentHash: string | null;
+  /** Into `contentHash`. */
+  readDepth: 0 | 1 | 2;
   /** Null before versions existed or while nothing is stored. */
   analysisVersion: string | null;
   /** Epoch ms. */
@@ -1434,6 +1436,7 @@ export function createOffers(deps: {
         current.contentHash !== null &&
         run?.contentHash !== current.contentHash,
       contentHash: current.contentHash,
+      readDepth: readDepth(row, current.contentHash),
       lastBumpAt: current.lastBumpAt?.getTime() ?? null,
       analysisVersion: run?.analysisVersion ?? null,
       failure: failureOf(row),
@@ -1792,19 +1795,21 @@ export function createOffers(deps: {
         set: { mergedInto: survivorId },
       })
       .run();
-    const readOf = (row: Pick<OfferRow, "analysisState" | "analysis">): 0 | 1 | 2 => {
-      const stored = parseStoredAnalysis(row.analysis);
-      if (row.analysisState !== "analyzed" || stored.run?.contentHash !== current.contentHash) {
-        return 0;
-      }
-      return stored.escalation === undefined ? 2 : 1;
-    };
     // A request is the next step from what its Offer had read: a first read, the escalation of a
     // first pass, or another read after a click or in a run. Answered on an Offer that has read
-    // further, it would overwrite the newer result or ask for a second escalation.
-    if (readOf(merged) <= readOf(absorbed)) {
-      carryWaiting(db, absorbedId, survivorId, current.contentHash);
-    }
+    // further, it would overwrite the newer result or ask for a second escalation. Not so where
+    // the merged Offer owes a click: the answer to any waiting request ends it, so withdrawing one
+    // means a second paid read, unless a read that is out answers the click itself.
+    const reached = readDepth(merged, current.contentHash);
+    const forClick =
+      merged.reanalyzeRequestedAt !== null &&
+      !analysisContext.reading(survivorId) &&
+      !analysisContext.reading(absorbedId);
+    const keeps = (side: OfferRow) => forClick || reached <= readDepth(side, current.contentHash);
+    carryWaiting(db, absorbedId, survivorId, current.contentHash, {
+      survivor: keeps(survivor),
+      absorbed: keeps(absorbed),
+    });
     db.delete(offers).where(eq(offers.id, absorbedId)).run();
   }
 
@@ -1970,6 +1975,20 @@ export function createOffers(deps: {
         .set({ offerId: made.id })
         .where(and(eq(offerPrices.source, source), eq(offerPrices.adId, adId)))
         .run();
+      // Left behind, a request for the leaving words would hold an Offer that no longer shows them
+      // while the new one sends them again.
+      if (leaving.contentHash !== null && currentAd(staying).contentHash !== leaving.contentHash) {
+        db.update(analysisItems)
+          .set({ offerId: made.id })
+          .where(
+            and(
+              eq(analysisItems.offerId, id),
+              inArray(analysisItems.state, WAITING),
+              eq(analysisItems.contentHash, leaving.contentHash),
+            ),
+          )
+          .run();
+      }
 
       // An Ad ID that never changed the rent has no price point of its own; the Offer it left
       // holds the point it shared, so the new Offer starts its history from this page.
