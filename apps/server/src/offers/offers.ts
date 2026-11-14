@@ -1284,6 +1284,11 @@ export function createOffers(deps: {
       return { outcome: "created", offerId: offer.id, reusedFacts: false };
     })();
 
+    // A page can show the Offer again. Were the clocks left to the nightly prune, an Offer quiet
+    // again before it would keep the clock of its earlier quiet spell. A new one has none.
+    if (result.outcome !== "created" && result.offerId !== null) {
+      refreshOfferClocks(db, result.offerId, clock());
+    }
     const entry = result.offerId === null ? undefined : pageChanged(result.offerId);
     if (result.outcome === "created" && entry !== undefined) {
       events?.publish("offer-added", summaryOf(entry));
@@ -1341,7 +1346,12 @@ export function createOffers(deps: {
     })();
     // A Bump makes an Offer recent again, which can lift it out of Stale, and can move it to
     // another Ad ID's page.
-    for (const id of touched) pageChanged(id);
+    for (const id of touched) {
+      // So can the card's Search match, written just before in the same transaction: either can
+      // show the Offer again. See `storePage`.
+      refreshOfferClocks(db, id, clock());
+      pageChanged(id);
+    }
     return result;
   }
 
