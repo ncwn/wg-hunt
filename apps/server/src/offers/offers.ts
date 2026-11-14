@@ -1192,6 +1192,9 @@ export function createOffers(deps: {
     if (parsed.status === "deleted") {
       const gone = db.$client.transaction((): IngestResult => {
         const known = db.select().from(offerAds).where(adKey(fetched.source, fetched.adId)).get();
+        // A merge may have shown the Offer since the last sample and left the clock it carried
+        // over running: stopped here, it does not outlive the page that makes the Offer quiet.
+        if (known !== undefined) refreshOfferClocks(db, known.offerId, now.getTime());
         const before = known && currentAd(adsOf([known.offerId]).get(known.offerId) ?? []);
         // Reading that the page is gone is a Recheck that worked: nothing waits to retry it.
         db.update(offerAds)
@@ -1231,6 +1234,8 @@ export function createOffers(deps: {
     const result = db.$client.transaction((): IngestResult => {
       const known = db.select().from(offerAds).where(adKey(fetched.source, fetched.adId)).get();
       if (known) {
+        // As for a deleted page.
+        refreshOfferClocks(db, known.offerId, now.getTime());
         const before = currentAd(adsOf([known.offerId]).get(known.offerId) ?? [known]);
         db.update(offerAds)
           .set({
@@ -1313,6 +1318,11 @@ export function createOffers(deps: {
       return { outcome: "created", offerId: offer.id, reusedFacts: false };
     })();
 
+    // A page can show the Offer again. Were the clocks left to the nightly prune, an Offer quiet
+    // again before it would keep the clock of its earlier quiet spell. A new one has none.
+    if (result.outcome !== "created" && result.offerId !== null) {
+      refreshOfferClocks(db, result.offerId, clock());
+    }
     const entry = result.offerId === null ? undefined : pageChanged(result.offerId);
     if (result.outcome === "created" && entry !== undefined) {
       events?.publish("offer-added", summaryOf(entry));
@@ -1370,7 +1380,12 @@ export function createOffers(deps: {
     })();
     // A Bump makes an Offer recent again, which can lift it out of Stale, and can move it to
     // another Ad ID's page.
-    for (const id of touched) pageChanged(id);
+    for (const id of touched) {
+      // So can the card's Search match, written just before in the same transaction: either can
+      // show the Offer again. See `storePage`.
+      refreshOfferClocks(db, id, clock());
+      pageChanged(id);
+    }
     return result;
   }
 
