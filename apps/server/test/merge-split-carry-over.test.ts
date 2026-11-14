@@ -199,7 +199,7 @@ describe("a merge declares what it carries over (B9)", () => {
 });
 
 describe("a merge of two Offers that have both read the words it shows", () => {
-  /** One room posted twice with the same words and split; the second post's page is the current one. */
+  /** The second post's page is the current one. */
   async function sameWordsSplit() {
     const h = bootOffers();
     const words = { title: "Zimmer in Mitte", text: OTHER_ROOM_TEXT };

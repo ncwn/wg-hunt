@@ -23,9 +23,8 @@ export type ItemMove =
   | { to: "dropped" }
   | { to: "discarded" }
   /**
-   * After a merge another request reads the same words, or the merged Offer has read past the step
-   * it asks for. One already sent is still billed: its answer finds no item and is priced from what
-   * its batch row remembers.
+   * A merge left no use for it. One already sent is still billed: its answer finds no item and is
+   * priced from what its batch row remembers.
    */
   | { to: "withdrawn" };
 
@@ -74,8 +73,7 @@ export const SETTLED: readonly AnalysisItemState[] = ["applied", "failed", "capp
 /**
  * Runs in the merge's transaction, before the absorbed Offer's row goes and takes its other items
  * along. `words`: the merged Offer's `contentHash`. A request for other words stays behind: on the
- * survivor it would hold the Offer until its batch ends, only to be dropped. `keep`: whether the
- * merged Offer still has a use for each side's requests for `words`.
+ * survivor it would hold the Offer until its batch ends, only to be dropped.
  */
 export function carryWaiting(
   db: Db,

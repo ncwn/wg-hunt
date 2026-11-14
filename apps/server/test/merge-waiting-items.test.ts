@@ -164,7 +164,6 @@ describe("a merge while a batch reads the absorbed Offer's words", () => {
 type BootOptions = NonNullable<Parameters<typeof boot>[0]>;
 type BatchScript = NonNullable<BootOptions["batchScript"]>;
 
-/** Offers a batch reads the same words for. */
 async function sameWords(
   count: number,
   batchScript: BatchScript,
@@ -315,7 +314,7 @@ describe("a merge into an Offer still waiting on words the absorbed one has fini
   });
 });
 
-/** The realtime call numbered `held` (from 0) waits for `release`. */
+/** `held` counts realtime calls from 0. */
 function heldRealtime(script: Parameters<typeof fakeProvider>[0], held: number) {
   const scripted = fakeProvider(script);
   let arrived = 0;
@@ -336,7 +335,6 @@ function heldRealtime(script: Parameters<typeof fakeProvider>[0], held: number) 
   };
 }
 
-/** One room posted `count` times with the same words, every post but the first split off. */
 async function postedWithSameWords(h: Boot, count = 2) {
   const words = { title: "Zimmer in Mitte", text: `${ROOM_TEXT} ${QUOTED}` };
   const adIds = Array.from({ length: count }, (_, index) => 9000001 + index);
@@ -497,7 +495,6 @@ describe("a merge while a realtime read is out", () => {
     }
   }
 
-  /** `finished` holds the final result; the ordinary first read of `reading` is out. */
   async function ordinaryReadOut(answer: Scripted) {
     const held = heldRealtime([anmeldungOk, answer], 1);
     const h = boot({ sameProviders: { realtime: held.realtime, batch: fakeBatchProvider([]) } });
@@ -608,10 +605,6 @@ describe("a merge while a realtime read is out", () => {
     expect(usageRows(h, true)).toBe(2);
   });
 
-  /**
-   * Two Offers with the same words: `finished` holds the final result, `clicked` was refused and
-   * has read nothing. A click on `clicked` is out, answered with `answer`.
-   */
   async function clickOut(answer: Scripted) {
     const held = heldRealtime(
       (call) => [anmeldungOk, new ProviderError("refused"), answer][Math.min(call, 2)] as Scripted,
@@ -810,10 +803,6 @@ describe("a merge of an Offer that owes a Re-analyse click with one that read fu
     });
   }
 
-  /**
-   * Three Offers with the same words: `finished` holds the final result, a batch holds `inBatch`'s
-   * first pass, and `owing` was refused and owes a click that waits with nothing sent.
-   */
   async function owingClick() {
     const held = heldRealtime([anmeldungOk], 0);
     const h = boot({
@@ -849,7 +838,6 @@ describe("a merge of an Offer that owes a Re-analyse click with one that read fu
     return { h, held, owing, inBatch, finished, result };
   }
 
-  /** The batch's first pass answers on `merged`, ends the click, and nothing is sent again. */
   async function answeredOnce(
     { h, held, result }: Awaited<ReturnType<typeof owingClick>>,
     merged: number,
@@ -910,7 +898,7 @@ describe("a split while a batch reads an Ad ID's words", () => {
     return made.body.id as number;
   };
 
-  /** One Offer of both rooms, whose current Ad ID is TAKEN's, with its words in a batch. */
+  /** TAKEN's Ad ID is the current one. */
   async function mergedRoomInBatch(batchScript: BatchScript = [anmeldungOk]) {
     const h = boot({ batchScript });
     ingestStored(h, KEPT, TAKEN);

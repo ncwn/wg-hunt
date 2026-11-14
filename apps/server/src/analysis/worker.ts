@@ -215,12 +215,10 @@ export function createAnalysis(deps: {
     }
 
     const hash = contentHash(page.text);
-    // A merge during the call may have moved the room to another Offer: what the call brings back,
-    // answer or failure, is its, a click it took over included. Where that Offer shows other
-    // words, or waits on a batch's answer for them, it would overwrite a result, escalate a second
-    // time or be overwritten in turn; so would one where it has read further into them, unless it
-    // owes a click now, which asks for another read whatever is held. A click made while the call
-    // was out counts: the call is its reading too.
+    // A merge during the call may have moved the room to another Offer. What the call brings back
+    // would overwrite a result or escalate a second time where that Offer shows other words or has
+    // read further, and be overwritten in turn where a batch's answer is still to come. A click
+    // asks for another read whatever is held, one made while the call was out included.
     const speaksFor = (holder: number): AnalysisJob | undefined => {
       const now = offers.analysisJob(holder);
       if (now === undefined) return undefined;
@@ -294,8 +292,7 @@ export function createAnalysis(deps: {
         // Nothing was sent, so there is nothing to store; a click on it stays owed.
         if (kind === "spend_cap_reached") noRoom.add(holder);
       } else {
-        // As `apply` drops a batch failure for words the Offer no longer has: a click it took over
-        // stays owed and is read again.
+        // Unrecorded, the failure ends no click: one the Offer owes is read again.
         if (speaksFor(holder) !== undefined) fail(holder, kind);
       }
       phases.set(id, "taken");
