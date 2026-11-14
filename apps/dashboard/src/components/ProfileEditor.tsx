@@ -33,7 +33,6 @@ export const PROFILE_QUESTIONS: Record<keyof SeekerProfile, string> = {
   places: "Where do you need to get to?",
 };
 
-/** Every answer is optional: one left out is simply not used. */
 export function ProfileEditor({
   profile,
   onChange,

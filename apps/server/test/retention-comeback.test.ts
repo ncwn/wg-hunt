@@ -13,7 +13,6 @@ describe("an Offer that comes back and goes quiet again between two prunes", () 
     goStale(h);
     nights(h, 85);
 
-    // The Ad ID is bumped and a poll sees it: the Offer is shown again.
     h.site.cards = h.freshCards([Number(adId)]);
     await h.crawl();
     const back = (await h.json("GET", `/offers/${id}`)).body;
@@ -21,12 +20,10 @@ describe("an Offer that comes back and goes quiet again between two prunes", () 
     expect(back.retention.state).toBe("not-quiet");
     const shownAt = h.clock.now;
 
-    // The same evening the seeker turns the Search off, so the Offer is Untracked before 03:00.
     h.clock.now += 6 * HOUR;
     const [search] = (await h.json("GET", "/searches")).body.items;
     await h.json("PATCH", `/searches/${search.id}`, { enabled: false });
     const quiet = (await h.json("GET", `/offers/${id}`)).body.retention;
-    // What the API promises: 90 days from about now, since it was shown hours ago.
     expect.soft(new Date(quiet.recordExpiresAt).getTime()).toBeGreaterThan(shownAt + 89 * DAY);
 
     nights(h, 10);
@@ -43,7 +40,6 @@ describe("an Offer that comes back and goes quiet again between two prunes", () 
     expect((await h.json("GET", `/offers/${id}`)).body.stale).toBe(false);
     const shownAt = h.clock.now;
 
-    // Taken that afternoon: a Recheck finds the page deactivated, so the Offer is Stale again.
     h.clock.now += 4 * HOUR;
     h.site.pages.set(Number(adId), adapterFixture("deactivated"));
     expect((await h.call("POST", `/offers/${id}/recheck`)).status).toBe(202);
@@ -65,8 +61,6 @@ describe("an Offer that comes back and goes quiet again between two prunes", () 
     nights(h, 3);
     expect((await h.json("GET", `/offers/${id}`)).body.retention.state).toBe("expiring");
 
-    // Turned on again, the Search reads the card as it was, not Bumped: only its match brings the
-    // Offer back.
     h.site.cards = [{ id: Number(adId), age: "3 Tage", title: `Zimmer ${adId}` }];
     await h.json("PATCH", `/searches/${search.id}`, { enabled: true });
     await h.crawl();
@@ -75,7 +69,6 @@ describe("an Offer that comes back and goes quiet again between two prunes", () 
     h.clock.now += 6 * HOUR;
     await h.json("PATCH", `/searches/${search.id}`, { enabled: false });
 
-    // Counted from the first time it was turned off, it would be gone before these end.
     nights(h, 89);
     expect(recordExists(h, id)).toBe(true);
     nights(h, 2);
@@ -88,7 +81,6 @@ describe("a room a merge shows again", () => {
     const h = bootOffers();
     const [fresh, stale] = ["9000001", "9000002"];
     h.site.cards = h.freshCards([Number(fresh), Number(stale)]);
-    // One room posted twice: dedupe takes the two Ad IDs for one Offer.
     for (const adId of [fresh, stale]) h.site.pages.set(Number(adId), adPage({ adId: +adId }));
     await h.addSearch();
     await h.crawl();
@@ -100,13 +92,10 @@ describe("a room a merge shows again", () => {
       .set({ lastBumpAt: new Date(h.clock.now - 20 * DAY) })
       .where(eq(offerAds.adId, stale))
       .run();
-    // Asked while the fresh Ad ID is Tracked, the Recheck stays queued once it is not.
     expect((await h.call("POST", `/offers/${room}/recheck`)).status).toBe(202);
     h.site.cards = [];
     h.site.pages.set(Number(fresh), adapterFixture("deactivated"));
 
-    // Cut in two behind the server's back, each half quiet for its own reason since long ago:
-    // the fresh Ad ID left the Search, the other is Stale.
     db.delete(searchMatches).where(eq(searchMatches.adId, fresh)).run();
     const half = 77;
     const row = db.select().from(offers).where(eq(offers.id, room)).get();

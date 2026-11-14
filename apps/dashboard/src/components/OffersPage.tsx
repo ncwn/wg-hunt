@@ -99,7 +99,6 @@ function OfferPanel({
         latest.current.onClose();
         return;
       }
-      // Covering the list, the panel keeps Tab inside it; beside the list, Tab moves freely.
       if (event.key !== "Tab" || !panel.current || !overlaid()) return;
       const focusable = Array.from(
         panel.current.querySelectorAll<HTMLElement>(
@@ -163,7 +162,6 @@ function OfferPanel({
   );
 }
 
-/** The open card lives in `?offer=<id>`, so it can be linked and Back closes it. */
 export function OffersPage({
   api,
   events,

@@ -49,7 +49,6 @@ function Lightbox({
     return () => opener?.focus({ preventScroll: true });
   }, []);
 
-  // On the photos when they open, and again when they come back from behind the sign-in.
   useEffect(() => {
     if (!suspended) box.current?.focus();
   }, [suspended]);

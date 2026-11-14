@@ -43,7 +43,6 @@ const CLEAN_UP_FAILED_BECAUSE: Record<
   unknown: "something unexpected went wrong",
 };
 
-/** Undefined when the clean-up's counts were not kept. */
 function removedText(deleted: NonNullable<Prune["lastSuccess"]>["deleted"]): string | undefined {
   if (deleted === null) return undefined;
   const parts = [
@@ -401,7 +400,6 @@ export const WIPE_POLL_MS = 3000;
 
 export function DataSection({ api }: { api: ApiClient }) {
   const load = useCallback(() => ask(() => api.GET("/storage")), [api]);
-  // The readout after a wipe comes with its answer, so the section is not loaded again.
   const { state, value: storage, replace, retry } = useStored(load);
   // The nav rail's counts are of Offers that no longer exist.
   const { refresh: refreshCounts } = useOfferCounts();

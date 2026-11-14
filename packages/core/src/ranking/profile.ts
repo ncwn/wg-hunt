@@ -16,9 +16,7 @@ const baseProfile = z.object({
   }),
   diet: z.enum(DIETS).nullable(),
   occupation: z.enum(OCCUPATIONS).nullable(),
-  /** Null when not said. */
   smoker: z.boolean().nullable(),
-  /** Null when not said. */
   hasPets: z.boolean().nullable(),
   /** ISO 639-1 codes. */
   languages: z.array(z.string().regex(/^[a-z]{2}$/)).max(20),

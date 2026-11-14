@@ -43,7 +43,6 @@ export function registerSystem(program: Command, ctx: Ctx): void {
       const { url } = ctx.looseConnection();
       const token = await readSecret(ctx, "Access token: ");
       const { client, send } = createApi({ url, token, fetch: ctx.io.fetch });
-      // Nothing is saved unless the server takes the token.
       await send(client.GET("/auth/session"));
       writeConfig(ctx.io, { url, token });
       ctx.note(`Logged in to ${url}. Saved to ${homeRelative(ctx, configPath(ctx.io))}.`);
@@ -122,7 +121,6 @@ export function registerAccess(program: Command, ctx: Ctx): void {
           writeConfig(ctx.io, { url: connection.url, token: reply.data.token });
         } catch (err) {
           // The server has already rotated: the old token is dead and the new one was not saved.
-          // Say where it can still be found; print it only if it was asked for.
           if (printed) ctx.show(reply, (rotated) => rotated.token);
           throw cliProblem(
             "token-not-saved",

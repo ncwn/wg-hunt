@@ -5,10 +5,6 @@ import { Actions, Problem } from "../settings/Section.js";
 import { Button } from "../ui/Button.js";
 import { BandTag, Disclosure, Notice } from "../ui/status.js";
 
-/**
- * Requests that stopped checking carry their outcome as a tag, so the word says it and the colour
- * only repeats it.
- */
 export function RequestLog({ api, events }: { api: ApiClient; events: EventStream }) {
   const { state, older, reload } = useRequestLog(api, events);
 

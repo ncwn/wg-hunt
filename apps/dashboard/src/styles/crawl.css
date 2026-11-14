@@ -26,7 +26,6 @@
   gap: var(--space-3);
 }
 
-/* It isn't money, so it isn't sky. */
 .adv-meter {
   display: block;
   width: 100%;

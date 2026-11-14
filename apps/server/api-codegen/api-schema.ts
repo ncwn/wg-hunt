@@ -1,5 +1,4 @@
-// Dev-only: generates the CLI's and dashboard's API client types from the OpenAPI document. It is
-// its own package so openapi-typescript gets the TypeScript 5 compiler API; the server uses TS 7.
+// Its own package so openapi-typescript gets the TypeScript 5 compiler API; the server uses TS 7.
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";

@@ -74,7 +74,6 @@ export function createScamContext(
       if (copy === undefined || original === undefined || copy === original) continue;
       const mine = copies.get(copy) ?? new Map();
       const seen = mine.get(original);
-      // Several links can join the same two Offers: the one with the most in common speaks.
       if (
         seen === undefined ||
         link.sharedImages > seen.sharedImages ||

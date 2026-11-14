@@ -105,7 +105,6 @@ describe("a run that ended while the connection was down", () => {
 
     await act(() => vi.advanceTimersByTimeAsync(ANALYSIS_RETRY_MS));
     expect(await screen.findByText(/Re-analysis finished: 2 offers/)).toBeTruthy();
-    // The server's next snapshot says no run is going.
     const snapshot = await (await server.call("GET", "/analysis")).json();
     await events.emit({ type: "analysis-status-changed", data: snapshot });
 

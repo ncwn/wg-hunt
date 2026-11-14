@@ -52,7 +52,6 @@ function currentValue(offer: Offer, key: string): unknown {
   return Array.isArray(fact) ? fact.map((item) => item.value) : fact.value;
 }
 
-/** Keyed by item value as JSON. */
 function quotesOf(offer: Offer, key: string): Map<string, string> {
   const fact = offer.facts[key];
   if (!Array.isArray(fact)) return new Map();
@@ -449,8 +448,6 @@ export function FactsTable({
   const outdated = new Set(offer.corrections.filter((c) => c.wordsChanged).map((c) => c.key));
   const changedSince = (key: string) =>
     outdated.has(key) && <span className="od-fact-note">The ad changed since.</span>;
-  // Facts without a row to put the button on: the Offer does not say them, the model has not read
-  // them yet, or the seeker corrected a list to none.
   const silent = [
     ...new Set([
       ...entries

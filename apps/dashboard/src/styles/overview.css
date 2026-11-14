@@ -316,7 +316,6 @@
     gap: var(--space-6);
   }
 
-  /* Stacked, the page scrolls, so the list keeps its six rows. */
   .ov-new-list {
     flex: none;
     min-height: 0;

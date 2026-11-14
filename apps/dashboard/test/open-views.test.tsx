@@ -198,7 +198,6 @@ describe("the Offers list", () => {
   });
 });
 
-/** The first ad's reading is held, so the others stay queued behind it. */
 async function openWhileReading() {
   let release = () => {};
   const gate = new Promise<void>((resolve) => {

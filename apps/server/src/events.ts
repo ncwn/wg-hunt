@@ -6,9 +6,7 @@ import type { AnalysisOverview } from "./analysis/worker.js";
 import type { BotCheckEvent, CrawlStatus } from "./crawl/status.js";
 import type { AnalysisState, OfferSummary } from "./offers/offers.js";
 
-/** Each payload is the JSON sent as `data`. */
 type ServerEvents = {
-  /** The payload is what `GET /crawl` returns; clients keep the last one as their copy. */
   "crawl-status-changed": CrawlStatus;
   "bot-check-cooldown": BotCheckEvent;
   "offer-added": OfferSummary;
@@ -28,14 +26,12 @@ type ServerEvents = {
    */
   "spend-cap-reached": SpendState;
   "spend-cap-cleared": SpendState;
-  /** The payload is what `GET /analysis` returns; clients keep the last one as their copy. */
   "analysis-status-changed": AnalysisOverview;
 };
 
 type AnalysisRunProgress = {
   runId: number;
   status: RunStatus;
-  /** Why a `stopped` run stopped; null otherwise. */
   stopReason: RunStopReason | null;
   done: number;
   /** Of `done`, the Offers given a new result. */
@@ -51,7 +47,7 @@ type AnalysisProgress = {
   status: AnalysisStatus;
   /** Offers that will be read without anyone acting, as `awaiting` in `GET /analysis`. */
   awaiting: number;
-  /** The month's spend so far, in US dollars. */
+  /** The month's spend so far. */
   spentUsd: number;
 };
 

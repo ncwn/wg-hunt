@@ -16,7 +16,6 @@ describe("a poll", () => {
 
     await h.drive(MORNING + 10 * MINUTE);
 
-    // Page 2 follows because page 1 had new Ad IDs; it is empty, which ends the poll.
     expect(h.sent).toEqual([
       h.searchPath(search, 0),
       offerPath(9000001),
@@ -99,7 +98,7 @@ describe("keeping the queue in step with the Searches", () => {
     const search = h.addSearch();
     h.polling.sync();
     h.serve(search, (page) => (page === 0 ? h.cards([9000001]) : []));
-    await h.engine.step(); // page 1 comes back with a new Ad ID: page 2 and a detail fetch are queued
+    await h.engine.step();
     expect(queuedJobs(h.db, "deeper-page")).toHaveLength(1);
 
     h.db.update(searches).set({ enabled: false }).where(eq(searches.id, search.id)).run();
@@ -132,7 +131,6 @@ describe("keeping the queue in step with the Searches", () => {
     const search = h.addSearch();
     h.polling.sync();
     h.serve(search, (page) => (page === 0 ? h.cards([9000001]) : []));
-    // The edit lands while the poll is on its way, before a sync could drop it.
     h.db.update(searches).set({ city: "Teststadt" }).where(eq(searches.id, search.id)).run();
 
     await h.drive(MORNING + 10 * MINUTE);

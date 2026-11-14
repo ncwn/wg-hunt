@@ -127,7 +127,6 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
   shown.current = view;
   // Announcements that arrive before the first page does would otherwise be lost.
   const early = useRef<OfferSummary[]>([]);
-  // A response for a view the seeker has since left is dropped.
   const generation = useRef(0);
 
   const { band, sort, showHidden, shortlisted } = view;
@@ -160,7 +159,6 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
   // Bumped each time "Show more" adds a page or an Offer is announced, so a read begun before
   // either doesn't drop it.
   const appended = useRef(0);
-  /** Doesn't blank or shrink the list, so the row the seeker was on stays. */
   const refresh = useCallback(async () => {
     if (latest.current.status !== "ready") return load();
     if (running.current) {
@@ -175,7 +173,6 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
         const pages = appended.current;
         const shownRows = latest.current.status === "ready" ? latest.current.items.length : 0;
         const read = await readRows(api, shown.current, Math.max(PAGE_SIZE, shownRows));
-        // Keep what is shown on a failure or after a change of view; the next try or load settles.
         if (!read.ok || mine !== generation.current) continue;
         if (pages !== appended.current) {
           again.current = true;
@@ -198,10 +195,8 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
   }, [api, load]);
 
   useEffect(() => {
-    // Band changes come in bursts; the server's word on the order is read once they settle.
     const later = settle(() => void refresh());
     const stop = events.subscribe((event) => {
-      // Every row's analysis status depends on the key, the cap and the settings it carries.
       if (event.type === "analysis-status-changed") {
         later.schedule();
         return;
@@ -223,7 +218,6 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
         return;
       }
       if (event.type === "offer-merged") {
-        // The one it went into may have changed band or place.
         const { offerId } = event.data;
         setState((now) =>
           now.status === "ready"
@@ -247,7 +241,6 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
             items: insertInBand({ ...offer, band: moved, bandChangedAt }, now.items),
           };
         });
-        // Its place inside the new band, or an Offer that was not loaded, is the server's to say.
         later.schedule();
       }
     });
@@ -264,7 +257,6 @@ export function useOffers(api: ApiClient, events: EventStream, view: OffersView)
     if (now.status !== "ready" || now.nextCursor === null || now.more.status === "loading") return;
     const cursor = now.nextCursor;
     const mine = generation.current;
-    // From the state as it is, not this snapshot: an announcement may have changed it meanwhile.
     setState((then) => (then.status === "ready" ? { ...then, more: { status: "loading" } } : then));
     const page = await readPage(api, shown.current, PAGE_SIZE, cursor);
     if (mine !== generation.current) return;
@@ -318,7 +310,6 @@ export function useOffer(api: ApiClient, id: number | undefined, events?: EventS
     (next: OfferState) => setState((now) => (now.status === "merged" ? now : next)),
     [],
   );
-  // A read of an Offer the pane has since left is dropped, so it can't show the old one.
   const shown = useRef(id);
   shown.current = id;
   // Reads can answer out of order, and a change made elsewhere isn't a write `readOffer` knows to
@@ -362,7 +353,6 @@ export function useOffer(api: ApiClient, id: number | undefined, events?: EventS
       }
       if (event.type !== "analysis-progress" || event.data.offerId !== id) return;
       const analysisStatus = event.data.status;
-      // A call that has just started changes only the status, which the event carries.
       if (analysisStatus.status === "reading") {
         setState((now) =>
           now.status === "ready"
@@ -399,7 +389,6 @@ export function useOffer(api: ApiClient, id: number | undefined, events?: EventS
     };
   }, [api, id, attempt]);
 
-  /** Without blanking the pane, so a notice shown in it stays. */
   const refresh = useCallback(async () => {
     if (id === undefined) return;
     await reread(id);
@@ -432,7 +421,6 @@ export function useOffer(api: ApiClient, id: number | undefined, events?: EventS
   return { state, retry: useCallback(() => setAttempt((n) => n + 1), []), refresh, replace };
 }
 
-/** `scam: "not"` means not a scam. */
 export type MarksChange = Partial<Offer["marks"]> & { scam?: "scam" | "not" | "clear" };
 
 export const setMarks = (api: ApiClient, id: number, marks: MarksChange) =>

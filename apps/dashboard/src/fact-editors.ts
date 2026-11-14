@@ -4,7 +4,6 @@ import { RENT_TYPES } from "./searches.js";
 type Gender = NonNullable<components["schemas"]["SeekerProfile"]["gender"]>;
 type Furnished = components["schemas"]["Filters"]["furnished"]["accept"][number];
 
-/** The server has the last word on what a value may be. */
 export type FactEditor =
   | { kind: "choice"; options: { value: unknown; label: string }[] }
   | { kind: "checklist"; options: { value: string; label: string }[] }
@@ -20,9 +19,7 @@ export type FactEditor =
 type RequirementValueField =
   | { kind: "choice"; label: string; options: { value: string; label: string }[] }
   | { kind: "implied"; value: string }
-  /** A two-letter ISO 639-1 code. */
   | { kind: "language" }
-  /** May not be empty. */
   | { kind: "text" };
 
 export type RequirementKind = { kind: string; label: string; value: RequirementValueField };
@@ -178,8 +175,6 @@ export const editorFor = (fact: string): FactEditor => EDITORS[fact] ?? { kind: 
 export const offersUnknown = (editor: FactEditor): boolean =>
   editor.kind !== "json" && editor.kind !== "checklist" && editor.kind !== "requirements";
 
-/** Facts with no row to put an Override button on while the Offer says nothing of them. */
 export const ALWAYS_OVERRIDABLE = ["anmeldung", "minimumStay", "scamSignals"] as const;
 
-/** The server refuses them. */
 export const NOT_OVERRIDABLE = new Set(["conflicts", "imageUrls", "category"]);

@@ -10,7 +10,6 @@ const BAND_WORD: Record<Band, string> = {
   hidden: "Hidden",
 };
 
-/** Bands are told apart by the word, never by colour alone. */
 export function BandTag({ band, children }: { band: Band; children?: ReactNode }) {
   return <span className={`wh-tag wh-tag-${band}`}>{children ?? BAND_WORD[band]}</span>;
 }
@@ -25,10 +24,6 @@ const HUNT_WORD: Record<HuntState, string> = {
   "needs-you": "Needs you",
 };
 
-/**
- * The detail waits in a tooltip on hover and focus, and is the pill's description for screen
- * readers.
- */
 export function StatusPill({
   state,
   onDark = false,

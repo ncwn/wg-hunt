@@ -12,7 +12,6 @@ describe("a Stale confirmation whose handler throws", () => {
     await h.addSearch();
     await h.crawlUntil(berlin(4, 23));
 
-    // The Sweep misses 9001002; its page can no longer be stored, so its handler throws.
     h.site.listing = h.site.listing.slice(0, 2);
     h.site.pages.set(9001002, adapterFixture("deactivated"));
     const dataDir = dirname(h.runtime.db.$client.name);

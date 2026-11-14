@@ -65,7 +65,6 @@ export function createDedupeStore(db: Db, clock: () => number) {
       });
   }
 
-  /** What tells a common photo from evidence about a room. */
   function photoIndex(source: Source): PhotoIndex {
     const rows = db.all<{ photoKey: string; offerId: number }>(
       sql`select distinct photo.value as photoKey, ${offerAds.offerId} as offerId

@@ -68,8 +68,6 @@ describe("pages stored without an Offer", () => {
     await first.crawl();
     const before = (await first.json("GET", "/offers")).body.items;
     expect(before).toHaveLength(2);
-    // As if the Offer was lost after the page was stored: a crash, or pages fetched by a build
-    // that did not make Offers yet.
     first.runtime.db.delete(offers).run();
     first.runtime.db.update(seenAds).set({ ingestedAt: null }).run();
     first.runtime.close();

@@ -75,7 +75,6 @@ export function OfferCountsProvider({
 
   useEffect(() => {
     stopped.current = false;
-    // A crawl's new Offers and a Filter's re-band come in bursts: count once they settle.
     const later = settle(() => void read());
     const stop = events.subscribe((event) => {
       if (

@@ -3,11 +3,6 @@ import type { Reply } from "../api/client.js";
 import type { Ctx } from "../context.js";
 import { CliError, EXIT, usageError } from "../problem.js";
 
-/**
- * The Profile, the Filters and the two settings documents are replaced whole. The server gives
- * each a revision (`ETag`) and refuses a PUT whose `If-Match` is not current with `stale-revision`,
- * so a `set` made from an old `show` cannot undo what someone changed in between.
- */
 export type RevisionOptions = { ifMatch?: string; base?: string };
 
 export function revisionOptions(command: Command): Command {
@@ -22,7 +17,6 @@ export function revisionOptions(command: Command): Command {
     );
 }
 
-/** A bare `abc` gets the quotes an entity tag has. */
 const quoted = (revision: string) =>
   /^(W\/)?".*"$/.test(revision.trim()) ? revision.trim() : `"${revision.trim()}"`;
 
@@ -40,7 +34,6 @@ function sameJson(a: unknown, b: unknown): boolean {
   );
 }
 
-/** The `If-Match` to send, or undefined to replace unconditionally. */
 export async function ifMatchFor(
   ctx: Ctx,
   opts: RevisionOptions,

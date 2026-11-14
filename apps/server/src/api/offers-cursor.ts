@@ -4,7 +4,6 @@ import { ProblemError } from "./problem.js";
 
 export const DEFAULT_SORT: Sort = "recency";
 
-/** `place`: the Place a distance sort measures to, by its Seeker Profile name; null otherwise. */
 export type ListOrder = { sort: Sort; place: string | null };
 
 export function offerCursor(key: OrderKey, order: ListOrder): string {

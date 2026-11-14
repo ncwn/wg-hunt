@@ -174,7 +174,6 @@ function useSelect<V extends string>({
   return { open, anchor, trigger, menu, current: options[chosen] };
 }
 
-/** The design system's menu, never the browser's. */
 export function SelectField<V extends string>({
   label,
   value,

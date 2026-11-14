@@ -1,7 +1,6 @@
 import { type ReactNode, useId } from "react";
 import { Icon } from "./Icon.js";
 
-/** For an answer that waits for Save; a Toggle is for settings that apply at once. */
 export function Checkbox({
   label,
   checked,
@@ -14,7 +13,6 @@ export function Checkbox({
   describedBy?: string | undefined;
 }) {
   return (
-    // A switch-like button, as the Toggle is: the design system draws the box, not the browser.
     // biome-ignore lint/a11y/useSemanticElements: a native checkbox brings the browser's own box
     <button
       type="button"

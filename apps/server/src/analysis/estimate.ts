@@ -17,7 +17,6 @@ const THINKING_TOKENS: Record<string, number> = {
   xhigh: 6_000,
   max: 10_000,
 };
-/** The share of Offers whose first pass has a Doubtful fact and so is read again. */
 const ESCALATION_SHARE = 0.2;
 
 function offerCostUsd(choice: ModelChoice, prices: AnalysisSettings["prices"]): number {

@@ -5,7 +5,6 @@ import { type DedupeMetrics, dedupeMetrics } from "./dedupe-metrics.js";
 
 const FIRST_SEEN = new Date("2026-11-04T09:00:00Z");
 
-/** One side of a pair, built the way the server builds it from a page and its card. */
 function profileOfSide(pair: PairCase, side: PairSide, name: string): AdProfile {
   const parsed = wgGesuchtSource.parseOffer(side.html, {
     firstSeen: FIRST_SEEN,

@@ -1,7 +1,6 @@
 import type { Category, RentType } from "../../searches.js";
 import type { SearchPageRequests, SearchSpec } from "../../source/source.js";
 
-/** Slug in the URL path and the number in its category segment. */
 const CATEGORY_URLS: Record<Category, { slug: string; number: number }> = {
   "flatshare-room": { slug: "wg-zimmer", number: 0 },
   "one-room-flat": { slug: "1-zimmer-wohnungen", number: 1 },

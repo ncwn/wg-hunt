@@ -76,7 +76,6 @@ function weeks(y: number, m: number): Day[][] {
   );
 }
 
-/** The design system's calendar, never a browser date input. */
 export function DateField({
   label,
   value,

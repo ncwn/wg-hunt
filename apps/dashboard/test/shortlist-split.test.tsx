@@ -33,7 +33,6 @@ describe("the Shortlisted view, live", () => {
       );
       roomId = a;
     });
-    // The page's stream carries what the server publishes from here on.
     ctx.server.runtime.events.subscribe((event) => {
       void ctx.events.emit(JSON.parse(JSON.stringify(event)));
     });

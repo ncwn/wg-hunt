@@ -19,7 +19,6 @@ const clocksOf = (h: Harness, id: number) => {
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
-/** Two rooms of one flat, ingested without a Search: dedupe keeps them as two Offers. */
 function twoRooms() {
   const h = bootOffers();
   const [first, second] = ingestAds(
@@ -31,10 +30,6 @@ function twoRooms() {
   return { h, first: first?.offerId as number, second: second?.offerId as number };
 }
 
-/**
- * The re-post is cut out behind the server's back, with no release, as a pass after a rules change
- * would find the two Duplicates.
- */
 function releasedRoomWithRepost() {
   const h = bootOffers();
   const [first, , second] = ingestAds(
@@ -363,7 +358,6 @@ describe("pins from a merge or split verdict (B11)", () => {
   it("pins the merged record when the other side of a dedupe merge is still pinned", async () => {
     const { h, room, repost } = releasedRoomWithRepost();
     h.clock.now += 60_000;
-    // A verdict on the cut-out repost alone, after the room's release: it pins the repost.
     h.runtime.db
       .insert(offerPairOverrides)
       .values({

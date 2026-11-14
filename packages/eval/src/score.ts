@@ -30,7 +30,6 @@ function itemOf(key: string, value: unknown): unknown {
   return value;
 }
 
-/** Entries whose value is `unknown` are not answers. */
 function actualItems(key: string, facts: CombinedFacts): unknown[] {
   const list = (facts as Record<string, unknown>)[key];
   if (!Array.isArray(list)) return [];

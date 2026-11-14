@@ -73,7 +73,6 @@ describe("a Duplicate collapses into the Offer", () => {
   it("does not let an older Ad ID's page overwrite the newer one's facts", async () => {
     const h = bootOffers();
     h.runtime.offers.ingest(fetchedAd(h, { adId: 9000002, warmRent: 480 }));
-    // Found later, but published earlier than the Ad ID the Offer already has.
     h.runtime.offers.ingest(fetchedAd(h, { adId: 9000001, warmRent: 450 }, -60 * MINUTE));
 
     const offer = await detailOf(h, 9000001);

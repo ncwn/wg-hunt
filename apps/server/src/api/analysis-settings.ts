@@ -56,7 +56,6 @@ export const registerAnalysisSettings: ApiModule = (api, { db, analysis }) => {
     requireRevision(c.req.valid("header")["if-match"], loadAnalysisSettings(db));
     saveAnalysisSettings(db, c.req.valid("json"));
     analysis.syncStatus();
-    // A higher cap, or a model that is now priced, may let waiting Offers through.
     analysis.poke();
     // A lowered cap may now be below what is in flight: the batch loop cancels it.
     analysis.batch.kick();

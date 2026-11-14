@@ -44,7 +44,6 @@ export function Confirm({
     };
   }, []);
 
-  // On its answer when it opens, and again when it comes back from behind the sign-in.
   useEffect(() => {
     if (!suspended) confirm.current?.focus();
   }, [suspended]);

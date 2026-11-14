@@ -14,7 +14,6 @@ export function TopBar({
   children,
 }: {
   title: ReactNode;
-  /** Data, not a description of the page: leave it out rather than fill it. */
   subtitle?: ReactNode;
   children?: ReactNode;
 }) {

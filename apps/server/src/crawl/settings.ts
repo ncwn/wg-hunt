@@ -101,7 +101,6 @@ export function loadCrawlSettings(db: Db): CrawlSettings {
   return readCrawlSettings(db).settings;
 }
 
-/** Throws a ZodError when a value breaks a constant. */
 export function saveCrawlSettings(db: Db, value: CrawlSettings, now: number): CrawlSettings {
   const valid = crawlSettingsSchema.parse(value);
   writeJson(db, KEY, valid, now);

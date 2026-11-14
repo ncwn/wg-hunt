@@ -116,7 +116,6 @@ describe("bumping the rules version", () => {
 
   it("happens by itself when the server starts", async () => {
     const first = await crawledOffer();
-    // Facts as an older build's rules left them.
     first.h.runtime.db
       .update(offers)
       .set({

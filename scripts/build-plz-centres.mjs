@@ -1,7 +1,6 @@
 //   curl -LO https://download.geonames.org/export/zip/DE.zip && unzip DE.zip DE.txt
 //   node scripts/build-plz-centres.mjs path/to/DE.txt
 //
-// The data is CC BY 4.0, credited in the README and packages/core/src/places/LICENSE.md.
 // A PLZ with several places gets the plain average of their positions, to three decimals (about
 // 100 m), which is as precise as a postal-code centre can honestly be.
 import { readFileSync, writeFileSync } from "node:fs";

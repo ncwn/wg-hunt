@@ -161,7 +161,6 @@ describe("POST /storage/wipe", () => {
     const { h } = await populated();
     const before = h.runtime.db.select().from(crawlRequests).all().length;
     expect(before).toBeGreaterThan(0);
-    // The requests were sent this Berlin morning, within the day's cap count.
     await h.json("POST", "/storage/wipe", CONFIRM);
     expect(h.runtime.db.select().from(crawlRequests).all().length).toBe(before);
     expect((await h.json("GET", "/crawl")).body.counts.day.used).toBe(before);
@@ -211,7 +210,6 @@ describe("POST /storage/wipe: its own state", () => {
     await gate.inFlight;
 
     const wipe = h.json("POST", "/storage/wipe", CONFIRM);
-    // The wipe has paused and now waits for the request in flight.
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     const storage = (await h.json("GET", "/storage")).body;
@@ -281,8 +279,6 @@ describe("POST /storage/wipe: its own state", () => {
     await gate.inFlight;
     const wipe = h.call("POST", "/storage/wipe", CONFIRM);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    // From here no write of a `wiped` pause gets through: the request in flight fails to store
-    // its state, so the wait for it rejects before the delete is reached.
     h.runtime.db.$client
       .prepare(
         `CREATE TEMP TRIGGER no_wiped BEFORE UPDATE ON settings
@@ -392,8 +388,6 @@ describe("POST /storage/wipe: its own state", () => {
 
   it("a wipe the process stopped in before deleting anything leaves a plain Pause at the next start", async () => {
     const { h, id } = await oneOffer();
-    // An earlier wipe finished; then a second one paused and the process stopped while it waited
-    // for the request in flight.
     const deleted = { offers: 0, snapshots: 0, unexpectedPages: 0, requests: 0 };
     writeJson(
       h.runtime.db,
@@ -433,7 +427,6 @@ describe("POST /storage/wipe: its own state", () => {
 
   it("finishes at the next start a wipe the process stopped in before removing the pages", async () => {
     const { h, adId } = await oneOffer();
-    // As if the process stopped right after the rows were deleted.
     h.runtime.db.$client.prepare("DELETE FROM offers").run();
     const deleted = { offers: 1, snapshots: 0, unexpectedPages: 0, requests: 0 };
     writeJson(

@@ -5,7 +5,6 @@ import { contentHash, MODEL_FACT_KEYS, RULE_FACT_KEYS } from "@wg-hunt/core";
 import { wgGesuchtSource } from "@wg-hunt/core/sources/wg-gesucht";
 import { OFFER_SUFFIX } from "./cases.js";
 
-/** The local set lives in the gitignored data folder: real Offers never reach the repository. */
 const LOCAL_SET_DIR = "eval";
 
 export const localSetDir = (dataDir: string) => join(dataDir, LOCAL_SET_DIR);
@@ -24,7 +23,6 @@ export type ManualOverride = Page & {
   key: string;
   value: unknown;
   madeOn?: (Page & { textHash: string | null }) | null;
-  /** The Offer's Ad IDs. */
   adCount?: number;
   /** ISO 8601. */
   createdAt?: string;
@@ -64,7 +62,6 @@ function labelledPage(override: ManualOverride): (Page & { textHash: string | nu
   return { source: override.source, adId: override.adId, textHash: null };
 }
 
-/** Nothing is written outside the data folder. */
 export function exportOverrides(args: {
   dataDir: string;
   overrides: readonly ManualOverride[];

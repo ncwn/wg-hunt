@@ -302,7 +302,7 @@ describe("Settings: Access token", () => {
     await user.click(screen.getByRole("button", { name: "Rotate access token" }));
     const question = screen.getByRole("alertdialog", { name: "Rotate the access token?" });
     expect(question.textContent).toMatch(/Every other browser is signed out/);
-    expect((await server.asCli("/auth/session")).status).toBe(204); // nothing happened yet
+    expect((await server.asCli("/auth/session")).status).toBe(204);
 
     await user.click(screen.getByRole("button", { name: "Rotate token" }));
     const shown = (await screen.findByLabelText("New access token")) as HTMLInputElement;

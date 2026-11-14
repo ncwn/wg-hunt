@@ -65,7 +65,6 @@ describe("the raw snapshot's 30 days", () => {
     goStale(h);
     nights(h, 25);
     h.runtime.db.$client.exec(`UPDATE offer_ads SET lastBumpAt = ${h.clock.now}`);
-    // Quiet again 8 nights later; its 30 days start then, not 25 nights ago.
     nights(h, 37);
     expect(snapshotExists(h, adId)).toBe(true);
     nights(h, 2);

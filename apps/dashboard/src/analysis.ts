@@ -51,7 +51,6 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
       if (snapshots.current === since) setView({ status: "ready", analysis: result.data });
       return result.data;
     }
-    // A status already read stays on screen; the next event or read brings it up to date.
     setView((now) =>
       now.status === "ready" ? now : { status: "failed", message: result.message },
     );
@@ -76,7 +75,6 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
   // than that announcement, and is dropped.
   const heard = useRef(0);
 
-  // The run this page follows, for a reconnect to look up after the connection was down.
   const latestRun = useRef(run);
   latestRun.current = run;
   const latestView = useRef(view);
@@ -136,7 +134,6 @@ export function useAnalysis(api: ApiClient, events: EventStream): Analysis {
         }
         setView({ status: "ready", analysis });
       } else if (event.type === "spend-cap-reached" || event.type === "spend-cap-cleared") {
-        // Both carry the whole cap state, so the warning comes and goes with the server's.
         const spend = event.data;
         setView((now) =>
           now.status === "ready" ? { status: "ready", analysis: { ...now.analysis, spend } } : now,

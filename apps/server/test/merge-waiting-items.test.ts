@@ -23,7 +23,6 @@ import {
   ROOM_TEXT,
 } from "./dedupe-harness.js";
 
-/** The sentence the scripted answers quote. */
 const QUOTED = "Anmeldung ist möglich.";
 /** Two rooms dedupe keeps apart; the second is the most recently active, so a merge shows its page. */
 const [KEPT, TAKEN] = [
@@ -898,7 +897,6 @@ describe("a split while a batch reads an Ad ID's words", () => {
     return made.body.id as number;
   };
 
-  /** TAKEN's Ad ID is the current one. */
   async function mergedRoomInBatch(batchScript: BatchScript = [anmeldungOk]) {
     const h = boot({ batchScript });
     ingestStored(h, KEPT, TAKEN);

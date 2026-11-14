@@ -11,7 +11,6 @@ export type Reason = {
 const REASON_WORD = { pass: "Fits", warn: "Check", fail: "Doesn't fit" } as const;
 const RANK = { fail: 0, warn: 1, pass: 2 } as const;
 
-/** Screen readers hear the outcome before the words. */
 export function ReasonList({
   reasons,
   label = "How it fits you",
@@ -76,7 +75,6 @@ function Thumb({ seed = 0 }: { seed?: number }) {
   );
 }
 
-/** It never opens or folds the row it sits in. */
 function ShortlistStar({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
   return (
     <button
@@ -166,7 +164,6 @@ function OfferRow({ offer, index, open, hrefFor, onOpen, onShortlist }: RowProps
     else if (newTabClick(event)) window.open(hrefFor(offer), "_blank", "noopener");
   };
   return (
-    // The row is a pointer shortcut for its title link, which is the keyboard path.
     <tr
       className={open ? "is-link is-open" : "is-link"}
       data-offer-id={offer.id}

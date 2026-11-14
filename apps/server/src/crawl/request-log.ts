@@ -51,7 +51,6 @@ export type RequestLogEntry = {
   path: string;
   status: number | null;
   outcome: RequestOutcome;
-  /** Set on a `bot-check` row only. */
   marker: BotCheckMarker | null;
 };
 
@@ -73,7 +72,6 @@ export function logRequestStart(
   return row.id;
 }
 
-/** The job has left the queue by now. */
 export function logRequestReceived(db: Db, id: number, status: number | null): void {
   db.update(crawlRequests)
     .set({ status, outcome: "received" })

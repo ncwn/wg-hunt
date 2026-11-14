@@ -331,7 +331,6 @@ function Form({
         }
         const doc = written.data;
         const next = toForm(doc.data);
-        // What was sent is saved; anything edited while it was on its way stays an edit.
         setHeld((now) => ({
           saved: next,
           form: rebase(sent, now.form, next),

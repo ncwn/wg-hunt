@@ -371,7 +371,6 @@ export function createOffers(deps: {
     analysisNow: AnalysisSnapshot = analysisSnapshot(),
   ): OfferSummary {
     const current = currentAd(ads);
-    // What the key facts show is the effective facts: a correction the seeker made counts.
     const facts = rankable.facts as unknown as RuleFacts;
     const away = measureTo && distanceToPlace(rankable.facts, measureTo);
     return {
@@ -900,7 +899,6 @@ export function createOffers(deps: {
           .update(offers)
           .set({
             ...marks,
-            // Dismissing a Dismissed Offer again keeps when it was first dismissed.
             ...(marks.dismissed !== undefined && {
               dismissedAt: marks.dismissed
                 ? sql`coalesce(${offers.dismissedAt}, ${now.getTime()})`
@@ -1174,8 +1172,7 @@ export function createOffers(deps: {
       )
       .where(eq(offers.id, offerId))
       .run();
-    // The status changed and no read follows to say so. Inside a caller's transaction it goes out
-    // once that has ended, as band moves do.
+    // Inside a caller's transaction it goes out once that has ended, as band moves do.
     if (db.$client.inTransaction) queueMicrotask(() => analysisContext.announce(offerId));
     else analysisContext.announce(offerId);
   }
@@ -1234,7 +1231,6 @@ export function createOffers(deps: {
     const result = db.$client.transaction((): IngestResult => {
       const known = db.select().from(offerAds).where(adKey(fetched.source, fetched.adId)).get();
       if (known) {
-        // As for a deleted page.
         refreshOfferClocks(db, known.offerId, now.getTime());
         const before = currentAd(adsOf([known.offerId]).get(known.offerId) ?? [known]);
         db.update(offerAds)
@@ -1586,7 +1582,6 @@ export function createOffers(deps: {
       .run();
   }
 
-  /** The Offer's words changed: what was read from the old ones is no longer its facts. */
   function resetAnalysis(id: number): void {
     db.update(offers)
       .set(analysisColumns({ state: "pending" }))
@@ -1857,7 +1852,6 @@ export function createOffers(deps: {
     db.delete(offers).where(eq(offers.id, absorbedId)).run();
   }
 
-  /** Runs after the merges commit. */
   function afterMerges(merges: { offerId: number; mergedInto: number }[]): void {
     for (const merge of merges) events?.publish("offer-merged", merge);
     // The survivor may have taken a reading with a page failure onto an Ad ID whose page reads.

@@ -36,7 +36,6 @@ export function createRetention(deps: {
   let timer: NodeJS.Timeout | undefined;
   let wiping: { since: number; done: Promise<WipeResult> } | undefined;
 
-  // A wipe the process stopped in the middle of is finished before anything else happens.
   finishInterruptedWipe(db, dataDir, clock());
   crawl.settleWipePause(readWipeRecord(db)?.at);
 

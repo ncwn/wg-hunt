@@ -3,10 +3,6 @@ import type { components } from "./api/schema.js";
 export type CrawlSettings = components["schemas"]["CrawlSettings"];
 export type CrawlConstants = components["schemas"]["CrawlConstants"];
 
-/**
- * Numbers stay text while typed, so a half-typed value is not lost; they become numbers when
- * checked.
- */
 export type PacingForm = {
   gapMinSeconds: string;
   gapMaxSeconds: string;
@@ -51,7 +47,6 @@ const MAX_PAGE_AGE_HOURS = 720;
 
 const minutesOf = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
 
-/** The server's bounds, so a draft is refused beside its field before anything is sent. */
 export function check(
   form: PacingForm,
   constants: CrawlConstants,

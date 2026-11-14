@@ -14,7 +14,6 @@ type PassSettings = {
   onUnexpected: (caseId: string, error: unknown) => void;
 };
 
-/** In `replay`, a case without scripted answers is left unread. */
 export type RunPlan =
   | ({ mode: "live"; provider: AnalysisProvider; concurrency: number } & PassSettings)
   | ({ mode: "replay" } & PassSettings)

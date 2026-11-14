@@ -51,10 +51,6 @@ const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
 /** Kept before any test fakes the timers, so a read still times out in real time. */
 const realSetTimeout = globalThis.setTimeout;
 
-/**
- * `next` resolves `undefined` once the server has closed the stream. `keepAlives` counts the
- * comment lines read so far.
- */
 function eventReader(res: Response) {
   expect(res.status).toBe(200);
   const reader = (res.body as ReadableStream<Uint8Array>).getReader();
@@ -200,7 +196,6 @@ describe("an open event stream", () => {
     expect((await stream.next())?.event).toBe("crawl-status-changed");
     // Read as it comes, so the server's writes don't wait on us.
     const rest = stream.rest();
-    // A keep-alive a day, each one far enough apart that a use would renew the session.
     for (let day = 0; day <= SESSION_IDLE_MS / DAY; day++) {
       booted.clock.now += DAY;
       await vi.advanceTimersByTimeAsync(KEEP_ALIVE_MS);

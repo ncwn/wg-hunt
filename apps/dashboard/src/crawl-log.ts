@@ -37,7 +37,6 @@ const OUTCOME_LABELS: Record<RequestOutcome, string> = {
   "handler-interrupted": "Interrupted while handling",
 };
 
-/** Both `unexpected-page` and `handler-error` paused the crawl as a layout change. */
 const OUTCOME_FLAGS: Record<RequestOutcome, Flag | undefined> = {
   pending: undefined,
   received: undefined,
@@ -96,10 +95,6 @@ const unavailable = (failed: Failed): RequestLogState => ({
 
 type Page = components["schemas"]["CrawlRequestPage"];
 
-/**
- * Each crawl status event re-reads the newest page: merged in when it reaches the rows held, else
- * it replaces them, so no gap hides between the two. A reconnect starts over from the newest page.
- */
 export function useRequestLog(api: ApiClient, events: EventStream) {
   const [state, setState] = useState<RequestLogState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -139,7 +134,6 @@ export function useRequestLog(api: ApiClient, events: EventStream) {
       void first().then((read) => {
         if (cancelled || turn !== latestFirst.current) return;
         if (!read.ok) {
-          // Rows on show stay; a log still loading has no other read left to settle it.
           setState((current) => (current.status === "loading" ? unavailable(read) : current));
           return;
         }
@@ -171,7 +165,6 @@ export function useRequestLog(api: ApiClient, events: EventStream) {
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
-  // A log that never loaded starts over, with its loading line, when the connection comes back.
   const failed = state.status === "failed";
   useEffect(() => (failed ? events.onReconnect(reload) : undefined), [failed, events, reload]);
 

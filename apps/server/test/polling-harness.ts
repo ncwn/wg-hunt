@@ -16,7 +16,6 @@ export const HOUR = 60 * MINUTE;
 /** 10:00 in Berlin (winter time), inside the default active hours. */
 export const MORNING = Date.parse("2026-11-04T09:00:00Z");
 
-/** Deterministic pseudo-random numbers in [0, 1). */
 function seeded(seed: number) {
   let a = seed;
   return () => {

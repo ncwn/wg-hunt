@@ -91,7 +91,6 @@ export const problemOf = (failed: Failed): Problem => ({
   errors: failed.errors ?? [],
 });
 
-/** `nextAt` is undefined if reading the Search again failed. */
 export type CrawlNowAnswer = { message: string; nextAt: Search["poll"]["nextAt"] | undefined };
 
 async function loadAll(api: ApiClient): Promise<Result<Search[]>> {
@@ -113,10 +112,6 @@ export type SearchesState =
   | { status: "failed"; problem: Problem }
   | { status: "ready"; items: Search[] };
 
-/**
- * Read again, quietly, whenever the crawl's status changes (a poll ran, a Sweep began), so "Next
- * check" and the Sweep line keep up without a loading flash.
- */
 export function useSearches(api: ApiClient, events: EventStream) {
   const [state, setState] = useState<SearchesState>({ status: "loading" });
   const reads = useRef(0);
@@ -140,7 +135,6 @@ export function useSearches(api: ApiClient, events: EventStream) {
         return;
       }
       const failed: SearchesState = { status: "failed", problem: problemOf(loaded) };
-      // A quiet read that fails keeps the list on show; the next status reads again.
       setState((current) => (quiet && current.status === "ready" ? current : failed));
     },
     [api],
@@ -153,7 +147,6 @@ export function useSearches(api: ApiClient, events: EventStream) {
   }, [load]);
 
   useEffect(() => {
-    // Statuses come in bursts while a crawl runs: read once they settle.
     const later = settle(() => void read(true));
     const stop = events.subscribe((event) => {
       if (event.type === "crawl-status-changed") later.schedule();
@@ -210,7 +203,6 @@ export function useSearches(api: ApiClient, events: EventStream) {
         api.POST("/searches/{id}/crawl-now", { params: { path: { id } } }),
       );
       if (!result.ok) return result;
-      // The poll is due now: refresh the Search so its "Next check" shows it.
       const fresh = await ask(() => api.GET("/searches/{id}", { params: { path: { id } } }));
       if (fresh.ok) change((items) => items.map((s) => (s.id === id ? fresh.data : s)));
       return {

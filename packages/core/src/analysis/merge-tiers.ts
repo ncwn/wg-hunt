@@ -124,7 +124,6 @@ export function mergeTiers(
   return { facts, log };
 }
 
-/** After the last pass, a fact whose quote was never found has no evidence. */
 export function settle(
   facts: ModelFacts,
   tier: 1 | 2,

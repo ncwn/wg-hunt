@@ -75,7 +75,6 @@ describe("deleting only inside the data folder", () => {
     const { h, id } = await oneOffer();
     const outside = join(h.dataDir, "..", `outside-${Date.now()}.html.gz`);
     writeFileSync(outside, "keep me");
-    // A hand-edited database naming paths and ids that lead out of the folder.
     h.runtime.db.$client.exec(
       `UPDATE offer_ads SET adId = '../../outside', source = '..' WHERE offerId = ${id}`,
     );

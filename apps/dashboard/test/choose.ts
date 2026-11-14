@@ -12,7 +12,6 @@ export async function choose(user: UserEvent, combobox: HTMLElement, option: str
 export const chosenLabel = (combobox: HTMLElement) =>
   combobox.querySelector(".wh-field-value, .wh-select-value")?.textContent ?? "";
 
-/** Opens a DateField and picks a day by its spoken name ("1 December 2026"). */
 export async function pickDay(user: UserEvent, field: HTMLElement, day: string) {
   await user.click(field);
   const dialog = screen.getByRole("dialog");

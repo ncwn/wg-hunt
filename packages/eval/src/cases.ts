@@ -22,7 +22,6 @@ const FACT_KEYS: readonly string[] = [...RULE_FACT_KEYS, ...MODEL_FACT_KEYS];
  * left out is not scored.
  */
 const offerFile = z.object({
-  /** Committed cases say so; the data folder's do not have to. */
   synthetic: z.boolean().optional(),
   note: z.string().optional(),
   language: z.enum(["de", "en"]).optional(),

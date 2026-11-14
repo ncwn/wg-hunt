@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * Invented search pages in the shape the adapter reads (see the adapter's own fixtures), built
- * from a list of cards so a test can say which Ad IDs a page holds and how old each one is.
- */
-
 export type CardSpec = {
   id: number;
   /** The card's "Online" text. */
@@ -14,7 +9,6 @@ export type CardSpec = {
   /** A Promoted placement: `campaign_click`. */
   promoted?: boolean;
   title?: string;
-  /** The card's price text. */
   price?: string;
   /** What the price is for: "pro Monat" or "pro Nacht". */
   per?: string;
@@ -55,13 +49,10 @@ export const adapterFixture = (name: string) =>
     "utf8",
   );
 
-/** A real-shaped Offer page (the adapter's own flatshare fixture). */
 export const offerHtml = () => adapterFixture("flatshare");
 
-/** A real-shaped page of a flat (the adapter's own fixture). */
 export const flatHtml = () => adapterFixture("flat");
 
-/** The flatshare Offer page with its own title and warm rent, so a test can tell Offers apart. */
 export const offerPageWith = ({ title, warmRent }: { title: string; warmRent: number }) =>
   offerHtml()
     .replaceAll("Helles Zimmer in ruhiger Studenten-WG", title)

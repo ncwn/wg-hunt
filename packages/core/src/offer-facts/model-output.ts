@@ -54,7 +54,6 @@ export type ModelFactsOutput = z.infer<typeof modelFactsOutputSchema>;
 
 type JsonNode = Record<string, unknown>;
 
-/** Counts the optional and union-typed fields the way the structured-output limits do. */
 export function structuredOutputUsage(schema: z.ZodType): { optional: number; unions: number } {
   const usage = { optional: 0, unions: 0 };
   const visit = (node: unknown): void => {

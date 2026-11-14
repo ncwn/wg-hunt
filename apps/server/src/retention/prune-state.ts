@@ -36,7 +36,6 @@ export type PruneState =
       lastSuccess: PruneSuccess | null;
     };
 
-/** The one place the state changes. */
 export function afterAttempt(prev: PruneState, attempt: PruneSuccess | PruneFailure): PruneState {
   if (!("error" in attempt)) return { state: "ok", lastSuccess: attempt };
   return {
@@ -107,7 +106,6 @@ function parseFailure(value: unknown): PruneFailure | null {
   return { startedAt: value.startedAt, finishedAt: value.finishedAt, error };
 }
 
-/** Anything that fits no state is `never`. */
 export function parsePruneState(stored: unknown): PruneState {
   if (!isRecord(stored)) return { state: "never" };
   const lastSuccess = parseSuccess(stored.lastSuccess);

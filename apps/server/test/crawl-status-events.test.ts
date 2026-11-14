@@ -145,7 +145,6 @@ describe("queuing a job", () => {
       await turn();
       expect(h.statuses).toHaveLength(1);
 
-      // A shutdown before the queued job's publish is due.
       h.engine.enqueue({ kind: "poll", path: "/b.html" });
       h.db.$client.close();
       await turn();

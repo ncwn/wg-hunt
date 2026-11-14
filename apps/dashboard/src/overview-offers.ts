@@ -7,13 +7,11 @@ import { isNewOffer } from "./seen.js";
 
 const PAGE = 200;
 
-/** Read straight from the server's filters rather than the whole list. */
 export type OverviewOffers =
   | { status: "loading" }
   | { status: "failed"; why?: string }
   | {
       status: "ready";
-      /** Every Match: the rent chart works from all of them. */
       matches: OfferSummary[];
       near: OfferSummary[];
       shortlist: OfferSummary[];
@@ -85,7 +83,6 @@ export function useOverviewOffers(api: ApiClient, events: EventStream, lastSeen:
         }
         const failed = [matches, near, shortlist].find((read): read is Failed => !read.ok);
         const why = failed && wordsOf(failed);
-        // Keep what is on show; only a first read that fails is reported.
         setState((now) =>
           now.status === "ready" ? now : why ? { status: "failed", why } : { status: "failed" },
         );

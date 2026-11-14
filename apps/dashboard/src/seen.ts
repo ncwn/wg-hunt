@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { ApiClient } from "./api/client.js";
 
-/** Kept in this browser, since the server keeps no per-client state. */
 const KEY = "wg-hunt.offers.last-seen";
 
 const listeners = new Set<() => void>();
@@ -56,7 +55,6 @@ export function markAllSeen(at: number = Date.now()): void {
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
-  // Another tab pressed "Mark all seen".
   const onStorage = (event: StorageEvent) => {
     if (event.key === KEY || event.key === null) listener();
   };

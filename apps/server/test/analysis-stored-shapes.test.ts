@@ -64,7 +64,6 @@ async function offer(withKey: boolean) {
   return { h, id, hash, run };
 }
 
-/** What the dashboard shows, then which model calls the next sweep sends. */
 async function observe(h: Boot, id: number) {
   const list = await h.json("GET", "/offers");
   const detail = await h.json("GET", `/offers/${id}`);

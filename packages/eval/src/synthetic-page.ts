@@ -1,8 +1,3 @@
-/**
- * Renders an Offer page in the Source's markup from invented content, so no real Offer text, name,
- * address, phone number or photo is ever in a page.
- */
-
 export type PageSpec = {
   adId: string;
   title: string;

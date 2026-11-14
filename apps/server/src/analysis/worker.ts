@@ -87,8 +87,7 @@ export function createAnalysis(deps: {
   };
   /**
    * What is left of the cap paid for neither of these Offers' calls when the worker last looked.
-   * Kept only to say so: every cycle still looks again with the numbers of the moment. Beside the
-   * phase, because such an Offer is queued again each cycle.
+   * Kept only to say so: every cycle still looks again with the numbers of the moment.
    */
   const noRoom = new Set<number>();
   let running: Promise<void> | undefined;
@@ -303,10 +302,6 @@ export function createAnalysis(deps: {
     }
   }
 
-  /**
-   * A batch call when only that fits, as new Offers go when the cap pays for a typical batch call
-   * and not a realtime one.
-   */
   function roomFor(request: AnalysisRequest): "realtime" | "batch" | "none" {
     const headroom = spend.headroomBetweenCallsMicros();
     const realtime = spend.estimateMicros(request, { batch: false });
@@ -414,8 +409,6 @@ export function createAnalysis(deps: {
     // While the key stays refused, each cycle sends the oldest owed click, and the `unauthorized`
     // recorded on its Offer ends it.
     for (const id of offers.owedReanalyses()) enqueue(id);
-    // Room for a batch call but not a realtime one: new Offers go as a batch too, rather than
-    // being turned away at the realtime reservation.
     const realtime = spend.fitsRealtime();
     const plan = batch.planOf(settings);
     const held = batch.heldOffers();
@@ -471,7 +464,6 @@ export function createAnalysis(deps: {
     });
   }
 
-  /** An exact re-post that joined an already-read Offer keeps its model facts and costs no pass. */
   function ingested(result: IngestResult): void {
     if (result.outcome === "none") return;
     if (result.reusedFacts && result.offerId !== null) {

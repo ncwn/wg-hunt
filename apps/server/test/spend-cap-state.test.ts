@@ -249,7 +249,6 @@ describe("B: room for a batch request but not a realtime one", () => {
 
   it("sends a kept Re-analyse click through the Batch API at the next cycle", async () => {
     const { h, id } = await readThenCapped();
-    // As a cap lowered after the 202 leaves a click.
     h.runtime.offers.requestReanalysis(id);
 
     await cycle(h);
@@ -344,10 +343,8 @@ describe("C: Re-analyse on one Offer", () => {
     expect((await h.json("POST", "/analysis/runs")).status).toBe(202);
     await poll(h);
     expect(h.batch.submissions).toHaveLength(1);
-    // Another Offer, read at once; the batch does not hold it, so only the cap can refuse it.
     const offer = (await crawlOffers(h, 1, 9000002)).find((o) => o.id !== held?.id);
     expect(h.requests).toHaveLength(2);
-    // Spent plus a typical realtime call: enough were nothing reserved, not with the batch's hold.
     const spent = (await spend(h)).spentUsd;
     const cap = spent + nominalUsd(h, { model: "claude-haiku-5-5", effort: "high" }, false);
     await change(h, { monthlySpendCapUsd: Math.ceil(cap * 1e6) / 1e6 });
@@ -399,7 +396,6 @@ describe("an Offer bigger than a typical one", () => {
   const submittedBig = (h: Boot) =>
     h.batch.submissions.flat().filter(({ request }) => request.userTurn.includes(FILLER));
 
-  /** The cap pays for a typical batch call, and not for this Offer's own batch call. */
   async function bigOfferCapped() {
     const h = boot();
     await setKey(h);
@@ -508,7 +504,6 @@ describe("an Offer bigger than a typical one", () => {
     await poll(h);
     expect(h.batch.submissions).toHaveLength(0);
   });
-  /** A second big Offer, new, that reaches the batch route. */
   async function newBigOffer(h: Boot, repeats?: number) {
     big(h, 9000002, repeats);
     const from = h.events.length;
@@ -556,7 +551,6 @@ describe("an Offer bigger than a typical one", () => {
       monthlySpendCapUsd: Math.round((spent + nominalUsd(h, MEDIUM, false) * 1.05) * 1e6) / 1e6,
     });
     expect(h.runtime.analysis.spend.fitsRealtime()).toBe(true);
-    // Bigger than a typical realtime call even as a batch.
     const { id, from } = await newBigOffer(h, 7000);
     h.clock.now += 3 * HOUR;
 

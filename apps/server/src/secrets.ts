@@ -8,7 +8,6 @@ export function isSecretName(name: string): name is SecretName {
   return (SECRET_NAMES as readonly string[]).includes(name);
 }
 
-// Secrets sit in the `settings` table of the SQLite file in the gitignored data folder.
 const keyOf = (name: SecretName) => `secret:${name}`;
 
 /** The API never returns it. */

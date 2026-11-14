@@ -5,21 +5,15 @@ import { type CrawlStatusView, formatBerlin, useCrawlStatus } from "./crawl-stat
 import type { CrawlStatus, EventStream } from "./events.js";
 import type { HuntState } from "./ui/status.js";
 
-/**
- * The crawl's own vocabulary (Cooldown, Bot check, request counts) stays in Settings › Advanced.
- */
 export type Hunt = {
   state: HuntState;
   detail?: string;
   sentence: string;
   stopped?: { why: string; next: string };
-  /** Nothing waits for the seeker, now or after a break. */
   on: boolean;
-  /** The one the server offers now; a break can't be cut short. */
   control: "pause" | "resume" | null;
 };
 
-/** So an empty list never promises a check that isn't coming. */
 export function emptyNext(empty: string, hunt: Hunt | null | undefined): string {
   return hunt ? `${empty} ${hunt.sentence}` : empty;
 }
@@ -27,7 +21,6 @@ export function emptyNext(empty: string, hunt: Hunt | null | undefined): string 
 const ASKED = "wg-gesucht asked whether you're a person";
 const ASKED_TWICE = "wg-gesucht asked twice today whether you're a person";
 
-/** Every word comes from the server's status, so the card, the pill, the alarm and Settings agree. */
 function describeHunt(crawl: CrawlStatus, now: Date = new Date()): Hunt {
   const nextAt = crawl.nextRequest.at ? formatBerlin(crawl.nextRequest.at, now) : undefined;
   const holds = crawl.holds;
@@ -73,8 +66,6 @@ function describeHunt(crawl: CrawlStatus, now: Date = new Date()): Hunt {
         "Resume when you're ready.",
       );
     case "layout-changed":
-      // One stop for two things: a page wg-hunt could not read, or a failure while handling one,
-      // which the disk, the database or the page itself can cause.
       return crawl.paused?.cause === "handler-error"
         ? stoppedHunt(
             common,
@@ -93,7 +84,6 @@ function describeHunt(crawl: CrawlStatus, now: Date = new Date()): Hunt {
         "Free some space, then resume.",
       );
     case "wiped":
-      // The seeker's own doing, not an alarm.
       return crawl.actions.resumeRefusedBy === "wipe-running"
         ? {
             ...common,

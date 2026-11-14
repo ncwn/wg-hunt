@@ -7,7 +7,6 @@ describe("POST /auth/token/rotate when the session table refuses the write", () 
   it("either rotates and returns the new token, or leaves the old one working", async () => {
     const runtime = bootTestApp();
     const { app, token, db } = runtime;
-    // A dashboard is signed in, so the rotation has a session row to delete.
     await app.request("/api/v1/auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: "http://localhost" },

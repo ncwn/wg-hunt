@@ -51,7 +51,6 @@ export const textMentioningPage = () =>
 
 const CUBA_FORM = `<form name="checkform" method="post" action="https://www.wg-gesucht.de/cuba.html"><input type="hidden" name="step" value="2"><input type="hidden" name="page" value="/wg-zimmer-in-Berlin.8.0.1.0.html"><div class="g-recaptcha" data-sitekey="synthetic"></div><button>Absenden</button></form>`;
 
-/** The whole verification page. */
 export const cubaPage = () =>
   `<!DOCTYPE html><html><head><title>Überprüfung</title><script src="https://www.google.com/recaptcha/api.js" async defer></script></head><body><h1>Bitte bestätigen Sie, dass Sie ein Mensch sind</h1>${CUBA_FORM}</body></html>`;
 

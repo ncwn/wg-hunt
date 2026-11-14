@@ -28,7 +28,6 @@ function Fold({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Notes({ offer }: { offer: Offer }) {
-  // Every cause the server gives, each with what ends it; a deactivated or deleted page is one.
   const lines = hiddenLines(offer);
   const failed = dealbreakers(offer);
   if (failed.length > 0) lines.push(`Hidden by a dealbreaker: ${failed.join(", ")}.`);
@@ -118,7 +117,6 @@ function Merged({ api, into }: { api: ApiClient; into: number }) {
   );
 }
 
-/** A new `revision` says the Offer changed elsewhere (a star in the list). */
 export function OfferDetail({
   api,
   id,

@@ -15,7 +15,6 @@ const words = (text: string): string[] =>
     .split(/[^\p{L}\p{N}]+/u)
     .filter((word) => word !== "");
 
-/** 32-bit FNV-1a. */
 function fnv1a(text: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {

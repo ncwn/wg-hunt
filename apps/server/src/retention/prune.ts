@@ -90,8 +90,6 @@ function pruneSnapshots(
     const match = SNAPSHOT_FILE.exec(file.path);
     const key = match === null ? undefined : `${match[1]}/${match[2]}`;
     if (key !== undefined && unadopted.has(key)) continue;
-    // An Ad ID of an Offer ages with the Offer; any other file (an Ad ID no Offer owns, a left
-    // over temporary file) by its own age.
     const owned = key !== undefined && quietSince.has(key);
     const since = owned ? quietSince.get(key as string) : file.mtimeMs;
     if (since === null || since === undefined || since > cutoff) continue;

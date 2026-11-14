@@ -18,7 +18,6 @@ function api(app: App, token: string) {
   };
 }
 
-/** The crawl settings add read-only constants. */
 async function editable(res: Response): Promise<Record<string, unknown>> {
   const { constants: _constants, ...rest } = (await res.json()) as Record<string, unknown>;
   return rest;

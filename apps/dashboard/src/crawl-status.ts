@@ -57,7 +57,6 @@ export function useCrawlStatus(api: ApiClient, events: EventStream) {
     };
   }, [read, events]);
 
-  // An unavailable status doesn't wait for an event that may not come: it is asked for again.
   const unavailable = view.status === "unavailable";
   useEffect(() => {
     if (!unavailable) return;

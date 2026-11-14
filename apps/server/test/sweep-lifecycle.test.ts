@@ -62,7 +62,6 @@ describe("the Sweep's lifecycle", () => {
 
   it("never judges from a running Sweep with no start time; it starts over instead (B12)", async () => {
     const { h, search } = await settled(7);
-    // A row that says "running" but has no start time: every match would look unseen.
     h.runtime.db
       .update(searchSweeps)
       .set({

@@ -156,7 +156,6 @@ export function nextClocks(offer: Clocks & { state: OfferState; kept: boolean },
   };
 }
 
-/** The room is quiet only once both halves were. */
 export function mergedClocks(survivor: Clocks, absorbed: Clocks): Clocks {
   const both = (a: Date | null, b: Date | null) => (a === null || b === null ? null : later(a, b));
   return {

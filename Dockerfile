@@ -21,7 +21,6 @@ COPY --from=build /deploy/node_modules ./node_modules
 COPY --from=build /deploy/drizzle ./drizzle
 COPY --from=build /deploy/dist ./dist
 COPY --from=build /repo/apps/dashboard/dist ./dashboard
-# The CLI is one self-contained file on PATH, so `docker compose exec wg-hunt wg-hunt ...` works.
 COPY --from=build --chmod=755 /repo/apps/cli/dist/wg-hunt.mjs /usr/local/bin/wg-hunt
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN mkdir .data && chown node:node .data

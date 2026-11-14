@@ -33,8 +33,6 @@ describe("Stale by age", () => {
     expect(offer.stale).toBe(true);
     expect(offer.tracked).toBe(true);
     expect((await h.json("GET", "/offers?includeHidden=true")).body.items[0].stale).toBe(true);
-    // Stale Offers are hidden from ranking, so once the periodic re-band has noticed, the default
-    // list leaves them out.
     h.runtime.offers.tick();
     expect((await h.json("GET", "/offers")).body.items).toEqual([]);
     expect(h.sent.length).toBe(requests);

@@ -26,7 +26,6 @@ const forecastFieldsOf = (search: Search): DraftSearch => ({
   pollInterval: search.pollInterval,
 });
 
-/** The server forecasts exactly this list and saves nothing. */
 export function draftList(all: Search[], draft: DraftSearch, editing?: number): DraftSearch[] {
   const others = all.map(forecastFieldsOf);
   return editing === undefined

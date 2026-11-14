@@ -38,8 +38,6 @@ export function SearchCard({
   onOpenChange,
 }: Props) {
   const [mode, setMode] = useState<"view" | "edit" | "confirmDelete">("view");
-  // A message is about the Search as it stood and the step the card was on: opening the form or
-  // the delete question, or a change to the Search, starts afresh.
   const context = `${search.id}:${search.updatedAt}:${search.enabled}:${search.poll.problem}:${mode}`;
   const changing = useMutation(context);
   const checking = useCheckNow(search, context, onCrawlNow);
@@ -162,7 +160,6 @@ export function SearchCard({
 
       {checking.state.status === "done" && <Notice tone="info">{checking.state.message}</Notice>}
       {checking.state.status === "failed" && <Notice tone="alarm">{checking.state.message}</Notice>}
-      {/* A failed delete is told in its question, which covers the card. */}
       {changing.state.status === "failed" && mode !== "confirmDelete" && (
         <Notice tone="alarm">{changing.state.message}</Notice>
       )}

@@ -29,7 +29,6 @@ function outcome(run: EndedRun): string {
         ? "Re-analysis stopped: its offers were deleted before every one was read."
         : "Re-analysis stopped: the monthly limit ran out before every offer was read. The rest keep what they had.";
     default: {
-      // A status this page doesn't know yet still says something.
       const unknown: never = run.status;
       return `Re-analysis ended (${String(unknown)}).`;
     }
@@ -44,7 +43,6 @@ function Progress({ run }: { run: Pick<RunProgress, "done" | "total"> }) {
   );
 }
 
-/** Nothing is re-analysed until the seeker clicks. */
 export function ReanalysisPanel() {
   const { view, run: heard, retryRun, dismissRun, startRun } = useAnalysisState();
   const [asking, setAsking] = useState(false);

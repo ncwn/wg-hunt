@@ -28,7 +28,6 @@ export type ExtractionResult = {
   modelRan: number;
   modelSkipped: number;
   modelFailed: number;
-  /** The counts add up to `modelFailed`. */
   failures: Partial<Record<FailureKind, number>>;
   escalated: number;
   facts: Record<string, FactTally>;
@@ -149,7 +148,6 @@ async function runCase(offer: OfferCase, pass: ModelPass | null): Promise<CaseRu
 
 const ratio = (part: number, whole: number) => (whole === 0 ? 0 : part / whole);
 
-/** The model's reading goes through `analyseOffer`, the same checks and merge as production. */
 export async function runExtraction(args: RunExtractionArgs): Promise<ExtractionResult> {
   const runs = new Array<CaseRun>(args.cases.length);
   let next = 0;

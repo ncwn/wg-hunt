@@ -40,7 +40,6 @@ export function choiceList(name: string, choices: readonly string[]) {
 
 const UNIT_MS = { m: 60_000, h: 3_600_000, d: 86_400_000, w: 604_800_000 } as const;
 
-/** A date or time without an offset is Berlin time, as everywhere in the app. */
 export function sinceInstant(value: string, now: number): string {
   const span = /^(\d+)([mhdw])$/.exec(value);
   if (span) {
@@ -95,10 +94,7 @@ function fromBerlinWall(wall: number): number {
   return wall - berlinOffsetMs(wall - berlinOffsetMs(wall));
 }
 
-/**
- * A number is tried as an Offer id, then as an Ad ID: Ad IDs are long numbers, so the two do not
- * clash in practice.
- */
+// Ad IDs are long numbers, so they do not clash with Offer ids.
 export async function findOffer(ctx: Ctx, ref: string): Promise<Reply<Offer>> {
   const { client, send } = ctx.api();
   const byUrl = () => send(client.GET("/offers/lookup", { params: { query: { url: ref } } }));

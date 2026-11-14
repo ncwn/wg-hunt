@@ -98,7 +98,6 @@ export async function run(argv: string[], io: Io): Promise<number> {
     return outcome ? fail(io, ctx, outcome.problem, outcome.exitCode) : EXIT.ok;
   } catch (err) {
     if (err instanceof CommanderError) {
-      // Asking for --help or --version is not a failure.
       if (err.exitCode === 0) return EXIT.ok;
       // Everything else Commander throws is a usage error it has printed no message for. On one
       // line, so that the problem is the last line on stderr when help text comes before it.

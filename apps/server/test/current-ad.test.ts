@@ -138,7 +138,6 @@ describe("losing the current Ad ID", () => {
     const same: AdSpec = { ...A, adId: 9000002, warmRent: 480 };
     const [first] = storeAds(h, A, same);
     const id = first?.offerId as number;
-    // The model read B's words, which are A's words too.
     const job = h.runtime.offers.analysisJob(id);
     h.runtime.db
       .update(offers)
@@ -178,7 +177,6 @@ describe("an Offer stored by a build that picked its current Ad ID differently",
     const first = bootOffers();
     const [stored] = storeAds(first, A, B);
     const id = stored?.offerId as number;
-    // An older build kept a newer deactivated Ad ID current, and the Offer on its page.
     first.runtime.db
       .update(offerAds)
       .set({ pageStatus: "deactivated" })
@@ -294,7 +292,6 @@ describe("pages stored but not yet made into Offers (B15)", () => {
     h.site.cards = h.freshCards([9000001]);
     await h.addSearch();
     await h.crawl();
-    // A page read again whose Offer step failed, then deleted from the data folder by hand.
     h.runtime.db.update(seenAds).set({ ingestedAt: null }).run();
     const { rmSync } = await import("node:fs");
     rmSync(join(h.dataDir, "offer-pages", "wg-gesucht", "9000001.html.gz"));

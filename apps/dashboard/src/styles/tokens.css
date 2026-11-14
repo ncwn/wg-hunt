@@ -1,8 +1,3 @@
-/*
- * Values mirror docs/design-system/tokens.json, whose README says what each is for;
- * test/tokens.test.ts checks their contrast. warned-solid is for alarm dots only and never sits
- * behind text.
- */
 :root {
   color-scheme: light dark;
 
@@ -46,13 +41,11 @@
   --ink-muted: #5a606c;
   --ink-soft: #454a55;
 
-  /* Dark in both themes. */
   --rail: #1a1b1f;
   --rail-raised: #2b2d33;
   --rail-ink: #a7abb5;
   --rail-ink-strong: #ffffff;
 
-  /* The same in both themes. */
   --brand: #f5e9c4;
   --brand-ink: #15171c;
 

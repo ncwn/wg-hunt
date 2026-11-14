@@ -10,7 +10,6 @@ import {
 import type { Db } from "./db/index.js";
 import { getSetting, putSetting } from "./db/settings.js";
 
-/** One Seeker Profile and one active Filter set per install, in the settings table. */
 const PROFILE_KEY = "seeker-profile";
 const FILTERS_KEY = "filters";
 

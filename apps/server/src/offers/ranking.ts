@@ -23,7 +23,6 @@ export type RankingView = {
   bandChangedAt: string;
   reasons: Reason[];
   chips: Chip[];
-  /** The first of `visibility.hidden`; null when not hidden. */
   hiddenBecause: HiddenCause | null;
   visibility: Visibility;
 };

@@ -40,7 +40,6 @@ export function withPace(settings: CrawlSettings, pace: Pace): CrawlSettings {
 const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** Quiet hours start when the active hours end and end when they start. */
 export function withQuietHours(
   settings: CrawlSettings,
   quietFrom: string,

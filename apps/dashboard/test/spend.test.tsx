@@ -303,7 +303,6 @@ describe("Settings: the older-analysis prompt", () => {
         { model, effort, prefix: ANALYSIS_PREFIX, userTurn: "x".repeat(8_000) },
         { batch: true },
       ) ?? Number.POSITIVE_INFINITY) / 1e6;
-    // The escalation is Haiku 5.5 at high effort.
     const cap =
       spend.spentUsd() + pass("claude-sonnet-5-5", "medium") + pass("claude-haiku-5-5", "high") / 2;
     await changeSettings(server, { monthlySpendCapUsd: Math.round(cap * 1e6) / 1e6 });

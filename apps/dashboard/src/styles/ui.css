@@ -550,7 +550,6 @@
   background: var(--surface-sunken);
 }
 
-/* On is an ink pill with a tick, so it reads without colour. */
 .wh-chip-pick.is-on {
   padding-left: var(--space-3);
   border-color: var(--ink);
@@ -1440,7 +1439,7 @@ button.wh-notice-head {
     order: 2;
   }
 
-  .wh-offers .wh-col-offer + td {
+  .wh-offers tbody tr .wh-col-offer + td {
     margin-left: 52px;
   }
 
@@ -2013,7 +2012,6 @@ button.wh-chip {
   }
 }
 
-/* Pages decide what happens at 1024px and under. */
 :root {
   --side-panel-w: clamp(400px, 34vw, 560px);
 }
@@ -2055,7 +2053,6 @@ button.wh-chip {
   }
 }
 
-/* Without the slide, a closing panel just goes. */
 @media (prefers-reduced-motion: reduce) {
   .wh-side-panel.is-closing {
     visibility: hidden;
