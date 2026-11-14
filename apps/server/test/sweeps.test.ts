@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { defaultCrawlSettings, saveCrawlSettings } from "../src/crawl/settings.js";
+import { MAX_SWEEP_ATTEMPTS } from "../src/crawl/sweeps.js";
 import { crawlJobs, offerAds, offers, seenAds } from "../src/db/schema.js";
 import { relaxCaps } from "./offers-harness.js";
 import { adapterFixture, berlin, bootSweep, DAY, HOUR, MINUTE } from "./sweep-harness.js";
@@ -160,6 +161,57 @@ describe("the daily Sweep", () => {
     const { h, search } = await settled(5);
     await h.json("PATCH", `/searches/${search.id}`, { rentTypes: ["limited"] });
     expect((await h.offerOf(9001000)).tracked).toBe(false);
+  });
+});
+
+describe("two Searches whose Sweeps read the same page", () => {
+  async function sharing() {
+    const h = bootSweep({ pageSize: 5 });
+    h.site.listing = h.cards(9001000, 12);
+    await h.addSearch();
+    await h.addSearch();
+    await h.crawlUntil(berlin(4, 23));
+    return h;
+  }
+
+  const sweeps = async (h: ReturnType<typeof bootSweep>) =>
+    (await h.json("GET", "/searches")).body.items.map(
+      (search: { sweep: unknown }) => search.sweep,
+    ) as { status: string; startAt: string; lastFinishedAt: string | null }[];
+
+  it("lets each Sweep wait out its retries on a failing page and give up", async () => {
+    const h = await sharing();
+    h.site.failing.push(/\.1\.1\.html/);
+
+    await h.crawlUntil(berlin(5, 15));
+
+    const fetches = h.sent
+      .filter((r) => r.at >= berlin(5, 0) && /\.1\.1\.html/.test(r.path))
+      .map((r) => r.at);
+    expect(fetches).toHaveLength(2 * MAX_SWEEP_ATTEMPTS);
+    for (const tries of [fetches.slice(0, MAX_SWEEP_ATTEMPTS), fetches.slice(MAX_SWEEP_ATTEMPTS)]) {
+      for (let attempt = 1; attempt < tries.length; attempt++) {
+        expect((tries[attempt] ?? 0) - (tries[attempt - 1] ?? 0)).toBeGreaterThanOrEqual(
+          attempt * 30 * MINUTE,
+        );
+      }
+    }
+    for (const sweep of await sweeps(h)) {
+      expect(sweep.status).toBe("scheduled");
+      expect(new Date(sweep.startAt).getTime()).toBeGreaterThanOrEqual(berlin(6, 0));
+    }
+  });
+
+  it("finishes both Sweeps when one Sweep's retry succeeds", async () => {
+    const h = await sharing();
+    h.site.failNext.push({ match: /\.1\.1\.html/, status: 500 });
+
+    await h.crawlUntil(berlin(5, 15));
+
+    for (const sweep of await sweeps(h)) {
+      expect(sweep.status).toBe("scheduled");
+      expect(new Date(sweep.lastFinishedAt ?? 0).getTime()).toBeGreaterThanOrEqual(berlin(5, 0));
+    }
   });
 });
 

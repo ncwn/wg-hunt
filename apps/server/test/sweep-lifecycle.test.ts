@@ -5,7 +5,7 @@ import { defaultCrawlSettings, saveCrawlSettings } from "../src/crawl/settings.j
 import { MAX_SWEEP_ATTEMPTS } from "../src/crawl/sweeps.js";
 import { crawlJobs, searches, searchSweeps } from "../src/db/schema.js";
 import { relaxCaps } from "./offers-harness.js";
-import { berlin, bootSweep, DAY, HOUR } from "./sweep-harness.js";
+import { berlin, bootSweep, DAY, HOUR, MINUTE } from "./sweep-harness.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -109,6 +109,12 @@ describe("the Sweep's lifecycle", () => {
       0,
       ...Array(MAX_SWEEP_ATTEMPTS).fill(1),
     ]);
+    const tries = h.requestsOf("deeper-page", berlin(5, 0)).slice(1);
+    for (let attempt = 1; attempt < tries.length; attempt++) {
+      const wait = (tries[attempt]?.at ?? 0) - (tries[attempt - 1]?.at ?? 0);
+      expect(wait).toBeGreaterThanOrEqual(attempt * 30 * MINUTE);
+      expect(wait).toBeLessThan(attempt * 30 * MINUTE + 5 * MINUTE);
+    }
     expect(h.requestsOf("stale-confirmation")).toEqual([]);
     const given = (await h.json("GET", `/searches/${search.id}`)).body.sweep;
     expect(given).toMatchObject({ status: "scheduled", mode: "daily", pagesRead: 0 });

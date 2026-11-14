@@ -174,6 +174,8 @@ export function createSweeps(deps: {
     if (held !== undefined) {
       if (isSweepPage(held.payload) && liveSweep(held.payload.searchId, held.payload.generation)) {
         if (held.payload.searchId === search.id || held.dueAt <= dueAt) return;
+        // A retry is always due later than a first try, and its count lives only in this job.
+        if ((held.payload.attempt ?? 0) >= 1) return;
       }
       removeJob(db, held.id);
     }
