@@ -1,4 +1,4 @@
-import { parseStoredAnalysis } from "../analysis/record.js";
+import { analysisColumns, readAnalysis } from "../analysis/record.js";
 import type { OfferRow } from "../db/schema.js";
 import { mergedClocks, mergedPinRelease } from "../retention/clocks.js";
 
@@ -103,14 +103,14 @@ export type SplitContext = {
 };
 
 export function readDepth(
-  row: Pick<OfferRow, "analysisState" | "analysis">,
+  row: Parameters<typeof readAnalysis>[0],
   words: string | null,
 ): 0 | 1 | 2 {
-  const stored = parseStoredAnalysis(row.analysis);
-  if (words === null || row.analysisState !== "analyzed" || stored.run?.contentHash !== words) {
+  const analysis = readAnalysis(row);
+  if (words === null || analysis.state !== "analyzed" || analysis.run.contentHash !== words) {
     return 0;
   }
-  return stored.escalation === undefined ? 2 : 1;
+  return analysis.escalation === null ? 2 : 1;
 }
 
 const earlier = (a: Date | null, b: Date | null): Date | null =>
@@ -121,7 +121,10 @@ export function mergedRow(survivor: OfferRow, absorbed: OfferRow, ctx: MergeCont
   const other = ctx.takesOver ? survivor : absorbed;
   const pageDepth = readDepth(page, ctx.currentHash);
   const otherDepth = readDepth(other, ctx.currentHash);
-  const escalated = (row: OfferRow) => parseStoredAnalysis(row.analysis).run?.escalated === true;
+  const escalated = (row: OfferRow) => {
+    const analysis = readAnalysis(row);
+    return analysis.state === "analyzed" && analysis.run.escalated === true;
+  };
   const words =
     otherDepth > pageDepth ||
     (otherDepth === pageDepth && otherDepth > 0 && escalated(other) && !escalated(page))
@@ -185,7 +188,7 @@ export function splitRow(source: OfferRow, ctx: SplitContext): Omit<OfferRow, "i
           : source[key];
       case "own-words":
         if (ownWords) return source[key];
-        return (key === "analysisState" ? "pending" : null) as OfferRow[K];
+        return (analysisColumns({ state: "pending" }) as Partial<OfferRow>)[key] as OfferRow[K];
       case "leaving":
         return ctx.leavingFirstSeenAt as OfferRow[K];
       case "copy":

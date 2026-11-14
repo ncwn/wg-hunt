@@ -2,7 +2,7 @@ import type { AnalysisProvider, AnalysisRequest, ModelFacts } from "@wg-hunt/cor
 import { fakeBatchProvider } from "@wg-hunt/core/analysis/testing";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
-import { parseStoredAnalysis } from "../src/analysis/record.js";
+import { readAnalysis } from "../src/analysis/record.js";
 import { offers } from "../src/db/schema.js";
 import {
   anmeldungOk,
@@ -120,8 +120,9 @@ describe("a Re-analyse click that was answered 202", () => {
     const id = offer?.id as number;
     const stored = rowOf(h, id);
     const facts = JSON.parse(stored?.modelFacts ?? "null") as ModelFacts;
-    const run = parseStoredAnalysis(stored?.analysis ?? null).run;
-    if (run === undefined) throw new Error("no stored analysis");
+    const analysis = stored && readAnalysis(stored);
+    if (analysis?.state !== "analyzed") throw new Error("no stored analysis");
+    const run = analysis.run;
 
     h.runtime.offers.requestReanalysis(id);
     expect(owedSince(h, id)).toEqual(new Date(h.clock.now));
