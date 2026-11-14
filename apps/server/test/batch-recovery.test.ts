@@ -232,6 +232,53 @@ describe("a batch whose results can never be read", () => {
     expect((await status(h)).spend.spentUsd).toBeCloseTo(held / 1e6, 9);
     expect(await runOf(h, run.id)).toMatchObject({ status: "failed", errorKinds: { expired: 2 } });
   });
+
+  describe("when ending it fails once and is tried again", () => {
+    const refuseEnd = (h: Boot) =>
+      h.runtime.db.$client.exec(
+        "CREATE TRIGGER refuse_end BEFORE UPDATE ON analysis_batches WHEN NEW.state = 'ended' BEGIN SELECT RAISE(ABORT, 'busy'); END",
+      );
+    const allowEnd = (h: Boot) => h.runtime.db.$client.exec("DROP TRIGGER refuse_end");
+    const batchState = (h: Boot) =>
+      h.runtime.db.$client.prepare("SELECT state FROM analysis_batches").get();
+
+    it("counts the reservation once after 29 days", async () => {
+      const h = boot();
+      await startedRun(h);
+      await poll(h);
+      const held = reserved(h);
+      h.clock.now += 29 * DAY;
+      const before = (await status(h)).spend.spentUsd;
+      refuseEnd(h);
+
+      await poll(h);
+      allowEnd(h);
+      await poll(h);
+
+      expect((await status(h)).spend.spentUsd).toBeCloseTo(before + held / 1e6, 9);
+      expect(batchState(h)).toEqual({ state: "ended" });
+      expect(reserved(h)).toBe(0);
+    });
+
+    it("counts the reservation once after five rejections", async () => {
+      const h = boot();
+      await startedRun(h);
+      await poll(h);
+      const held = reserved(h);
+      const before = (await status(h)).spend.spentUsd;
+      h.batch.control.failStatus = new ProviderError("rejected");
+      for (let i = 0; i < 4; i++) await poll(h);
+      refuseEnd(h);
+
+      await poll(h);
+      allowEnd(h);
+      await poll(h);
+
+      expect((await status(h)).spend.spentUsd).toBeCloseTo(before + held / 1e6, 9);
+      expect(batchState(h)).toEqual({ state: "ended" });
+      expect(reserved(h)).toBe(0);
+    });
+  });
 });
 
 describe("filling a batch", () => {
