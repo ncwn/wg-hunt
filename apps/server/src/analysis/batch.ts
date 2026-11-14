@@ -620,8 +620,11 @@ export function createBatchAnalysis(deps: {
 
   /** The reservation counts as spent, so no cap really used is freed. */
   function giveUp(batch: AnalysisBatchRow, kind: AnalysisErrorKind): void {
-    ledger.recordUnconfirmed(batch.reservedMicros);
-    announceRunsOf(state.moveBatch(batch, { to: "ended", reason: "given_up", kind }));
+    const failed = db.$client.transaction(() => {
+      ledger.recordUnconfirmed(batch.reservedMicros);
+      return state.moveBatch(batch, { to: "ended", reason: "given_up", kind });
+    })();
+    announceRunsOf(failed);
   }
 
   /** Until a batch is found or ruled out, its reservation stays and its Offers go nowhere else. */
@@ -753,15 +756,9 @@ export function createBatchAnalysis(deps: {
         .from(analysisItems)
         .where(and(eq(analysisItems.batchId, batch.id), eq(analysisItems.state, "submitted")))
         .all();
-      // Results that match none of this batch's request ids are another batch's: this was not
-      // the batch that was sent. Its reservation is counted as spent, not released.
-      if (outcomes.length > 0 && byItem.size === 0) {
-        ledger.recordUnconfirmed(batch.reservedMicros);
-      } else {
-        recordOrphans(batch, byItem);
-      }
       const runs = new Set<number>();
-      // Each result and its cost are written together, so a restart halfway never counts one twice.
+      // Each result is written with its cost, and a cost that has no item with the batch's end, so
+      // a restart halfway never counts one twice.
       for (const item of items) {
         db.$client.transaction(() => {
           const outcome: BatchOutcome = byItem.get(item.id) ?? {
@@ -773,7 +770,16 @@ export function createBatchAnalysis(deps: {
         })();
         if (item.runId !== null) runs.add(item.runId);
       }
-      state.moveBatch(batch, { to: "ended", reason: "completed" });
+      db.$client.transaction(() => {
+        // Results that match none of this batch's request ids are another batch's: this was not
+        // the batch that was sent. Its reservation is counted as spent, not released.
+        if (outcomes.length > 0 && byItem.size === 0) {
+          ledger.recordUnconfirmed(batch.reservedMicros);
+        } else {
+          recordOrphans(batch, byItem);
+        }
+        state.moveBatch(batch, { to: "ended", reason: "completed" });
+      })();
       announceTouched();
       for (const runId of runs) announceRun(runId);
     }

@@ -85,6 +85,29 @@ describe("Offers deleted while a batch is out", () => {
     expect((await offerOf(h, kept?.id as number)).analysis.model).toBe("claude-sonnet-5-5");
   });
 
+  it("counts a deleted Offer's answer once when ending the batch fails and is tried again", async () => {
+    const h = boot();
+    await startedRun(h, 2);
+    await poll(h);
+    const spentBefore = (await status(h)).spend.spentUsd;
+    const [, gone] = (await h.json("GET", "/offers")).body.items as { id: number }[];
+    h.runtime.db.$client.prepare("DELETE FROM offers WHERE id = ?").run(gone?.id);
+    h.batch.complete();
+    h.runtime.db.$client.exec(
+      "CREATE TRIGGER refuse_end BEFORE UPDATE ON analysis_batches WHEN NEW.state = 'ended' BEGIN SELECT RAISE(ABORT, 'busy'); END",
+    );
+
+    await poll(h);
+    h.runtime.db.$client.exec("DROP TRIGGER refuse_end");
+    await poll(h);
+
+    expect((await status(h)).spend.spentUsd).toBeCloseTo(spentBefore + 2 * 0.002, 9);
+    expect(h.runtime.db.$client.prepare("SELECT state FROM analysis_batches").get()).toEqual({
+      state: "ended",
+    });
+    expect(reserved(h)).toBe(0);
+  });
+
   it("never lets the nightly prune touch the spend ledger or a batch in flight", async () => {
     const h = boot();
     await startedRun(h);
