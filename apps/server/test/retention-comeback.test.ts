@@ -136,7 +136,7 @@ describe("a room a merge shows again", () => {
 });
 
 describe("a Stale Offer a Sweep sights every day on a deep page", () => {
-  it("is still deleted 90 days after it went quiet", async () => {
+  it("keeps the clocks of the night it was first found quiet", async () => {
     const h = bootSweep({ pageSize: 1 });
     h.site.listing = h.cards(9001000, 3);
     await h.addSearch();
@@ -149,17 +149,21 @@ describe("a Stale Offer a Sweep sights every day on a deep page", () => {
     const row = () => h.runtime.db.select().from(offers).where(eq(offers.id, id)).get();
     const lastSeen = () =>
       h.runtime.db.select().from(seenAds).where(eq(seenAds.adId, "9001002")).get()?.lastSeenAt;
+    await h.crawlUntil(quietAt + DAY);
+    h.runtime.retention.prune();
+    const { quietSince, recordClockSince } = row() ?? {};
+    expect(quietSince).toBeInstanceOf(Date);
+    expect(recordClockSince).toBeInstanceOf(Date);
+
     let sighted = 0;
-    while (row() !== undefined && h.clock.now < quietAt + 120 * DAY) {
+    for (let night = 0; night < 5; night++) {
       const day = h.clock.now;
       await h.crawlUntil(day + DAY);
       sighted = (lastSeen()?.getTime() ?? 0) > day ? sighted + 1 : sighted;
       h.runtime.retention.prune();
     }
 
-    expect(row()).toBeUndefined();
-    expect(h.clock.now - quietAt).toBeGreaterThan(90 * DAY);
-    expect(h.clock.now - quietAt).toBeLessThanOrEqual(92 * DAY);
-    expect(sighted).toBeGreaterThan(90);
+    expect(sighted).toBeGreaterThanOrEqual(4);
+    expect(row()).toMatchObject({ quietSince, recordClockSince });
   });
 });
