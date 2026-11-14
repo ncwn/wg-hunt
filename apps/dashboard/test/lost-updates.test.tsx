@@ -394,6 +394,35 @@ describe("Settings: a single setting changes only itself", () => {
     );
     expect((await stored(server, "/settings/crawl")).pacing.dailyCap).toBe(120);
   });
+
+  it("changing one end of the quiet hours keeps the other end saved after Settings was opened", async () => {
+    const server = realServer({ signedIn: true });
+    await server.ready;
+    const landed: Json[] = [];
+    const fetch = async (request: Request) => {
+      const put =
+        request.method === "PUT" && new URL(request.url).pathname.endsWith("/settings/crawl");
+      const body = put ? await request.clone().json() : undefined;
+      const response = await server.fetch(request);
+      if (put && response.ok) landed.push(body);
+      return response;
+    };
+    const { user } = renderDashboard(fetch, "/settings");
+    const from = await screen.findByLabelText("Quiet hours start");
+    const until = screen.getByLabelText("Quiet hours end");
+    await waitFor(() => expect(from.getAttribute("data-value")).toBe("23:30"));
+    expect(until.getAttribute("data-value")).toBe("07:00");
+    await elsewhere(server, "/settings/crawl", (settings) => {
+      settings.pacing.activeHours.start = "06:00";
+    });
+
+    await choose(user, from, "22:00");
+    await waitFor(() => expect(landed).toHaveLength(1));
+    expect(landed[0].pacing.activeHours).toEqual({ start: "06:00", end: "22:00" });
+    await waitFor(() => expect((from as HTMLButtonElement).disabled).toBe(false));
+    expect(from.getAttribute("data-value")).toBe("22:00");
+    expect(until.getAttribute("data-value")).toBe("06:00");
+  });
 });
 
 describe("Settings › Advanced: drafts survive saves made around them", () => {
@@ -472,6 +501,60 @@ describe("Settings › Advanced: drafts survive saves made around them", () => {
     expect(region.queryByRole("button", { name: "Save pacing" })).toBeNull();
   });
 
+  it("keeps the pace picked after a pacing save when the read after that save answers last", async () => {
+    const server = realServer({ signedIn: true });
+    await server.ready;
+    let puts = 0;
+    let holding = false;
+    let held = 0;
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fetch = async (request: Request) => {
+      const isCrawl = new URL(request.url).pathname.endsWith("/settings/crawl");
+      if (isCrawl && request.method === "PUT") {
+        puts += 1;
+        const response = await server.fetch(request);
+        if (puts === 1) holding = true;
+        return response;
+      }
+      if (isCrawl && request.method === "GET" && holding) {
+        held += 1;
+        const response = await server.fetch(request);
+        await gate;
+        return response;
+      }
+      return server.fetch(request);
+    };
+    const { user } = renderDashboard(fetch, "/settings");
+    await openAdvanced(user);
+    await openFold(user, "Pacing");
+    const region = within(await screen.findByRole("region", { name: "Pacing" }));
+    const daily = (await region.findByLabelText("Most requests a day")) as HTMLInputElement;
+    await user.clear(daily);
+    await user.type(daily, "200");
+    await user.click(region.getByRole("button", { name: "Save pacing" }));
+    await waitFor(() => expect(held).toBe(1));
+    holding = false;
+
+    const gently = screen.getByRole("button", { name: "Gently" }) as HTMLButtonElement;
+    await user.click(gently);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    release();
+
+    await waitFor(async () =>
+      expect((await stored(server, "/settings/crawl")).pacing).toMatchObject({
+        gapMinSeconds: 30,
+        hourlyCap: 15,
+        dailyCap: 150,
+      }),
+    );
+    await waitFor(() => expect(gently.disabled).toBe(false));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(gently.getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("keeps the reading-model fields changed while the save was on its way", async () => {
     const server = realServer({ signedIn: true });
     await server.ready;
@@ -491,6 +574,37 @@ describe("Settings › Advanced: drafts survive saves made around them", () => {
     );
     await waitFor(() => expect(screen.getByText("Unsaved changes")).toBeTruthy());
     expect(screen.getByLabelText("Effort").textContent).toContain("low");
+  });
+
+  it("holds Revert while the reading-model save is on its way", async () => {
+    const server = realServer({ signedIn: true });
+    await server.ready;
+    const hold = holdingFetch(server, "/settings/analysis");
+    const { user } = renderDashboard(hold.fetch, "/settings");
+    await openAdvanced(user);
+    await screen.findByLabelText("Model");
+    const batches = screen.getByLabelText("Always read in batches");
+
+    await user.click(batches);
+    await user.click(screen.getByRole("button", { name: "Save reading model" }));
+    await waitFor(() => expect(hold.sent()).toBe(1));
+    expect((screen.getByRole("button", { name: "Revert" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    await user.click(screen.getByRole("button", { name: "Revert" }));
+    hold.release();
+
+    expect(await screen.findByText("Saved.")).toBeTruthy();
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(batches.getAttribute("aria-checked")).toBe("true");
+    expect((await stored(server, "/settings/analysis")).batchOnly).toBe(true);
+
+    await user.click(screen.getByLabelText("Second read when unsure"));
+    const revert = screen.getByRole("button", { name: "Revert" }) as HTMLButtonElement;
+    expect(revert.disabled).toBe(false);
+    await user.click(revert);
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(batches.getAttribute("aria-checked")).toBe("true");
   });
 
   function failingReads(server: Server, path: string) {
