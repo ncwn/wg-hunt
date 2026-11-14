@@ -1,6 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { afterEach } from "vitest";
 import { bootOffers, MINUTE, offerPageWith } from "../../server/test/offers-harness.js";
 import type { Io } from "../src/io.js";
@@ -17,6 +19,9 @@ export function tempDir(): string {
   dirs.push(dir);
   return dir;
 }
+
+setFlagsFromString("--expose-gc");
+export const collectGarbage = runInNewContext("gc") as () => void;
 
 export type Result = { code: number; stdout: string; stderr: string };
 
@@ -78,6 +83,19 @@ export type CliOptions = {
   /** Epoch milliseconds. */
   now?: () => number;
   signal?: AbortSignal;
+};
+
+// Node frees a Request that nothing holds, and its abort with it. A real fetch holds its own.
+const waiting = new Set<Request>();
+
+export const neverAnswers: Io["fetch"] = (request) => {
+  waiting.add(request);
+  return new Promise((_, reject) =>
+    request.signal.addEventListener("abort", () => {
+      waiting.delete(request);
+      reject(request.signal.reason);
+    }),
+  );
 };
 
 export function cliFor(server: Pick<Server["runtime"], "app" | "token">, options: CliOptions = {}) {
