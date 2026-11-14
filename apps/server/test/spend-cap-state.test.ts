@@ -169,7 +169,7 @@ describe("B: room for a batch request but not a realtime one", () => {
     const h = boot();
     await setKey(h);
     await crawlOffers(h, 1);
-    await change(h, { effort: "high" });
+    await change(h, { effort: "high", escalation: null });
     await change(h, { monthlySpendCapUsd: await between(h, HIGH) });
     expect((await spend(h)).state).toBe("ok");
 
