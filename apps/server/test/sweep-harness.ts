@@ -45,11 +45,13 @@ export function bootSweep(
     listing: [] as CardSpec[],
     pages: new Map<number, string>(),
     failNext: [] as { match: RegExp; status: number }[],
+    failing: [] as RegExp[],
   };
   const sent: { path: string; at: number }[] = [];
   const fetcher: SourceFetcher = {
     async fetch(path) {
       sent.push({ path, at: clock.now });
+      if (site.failing.some((match) => match.test(path))) return { status: 500, body: "" };
       const failure = site.failNext.findIndex((f) => f.match.test(path));
       if (failure >= 0) {
         const [fail] = site.failNext.splice(failure, 1);
