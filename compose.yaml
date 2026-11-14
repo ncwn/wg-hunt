@@ -9,10 +9,9 @@ services:
       # Loopback only: the dashboard is never reachable from the rest of the network.
       - "127.0.0.1:8787:8787"
     volumes:
-      # The database, stored pages and secrets. Gitignored.
       - ./.data:/app/.data
 
-  # Installs new wg-hunt releases once a day. Only touches containers labelled above.
+  # Only touches containers labelled above.
   watchtower:
     image: nickfedor/watchtower:1
     restart: unless-stopped

@@ -13,7 +13,6 @@ const sizeOf = (path: string) => {
   }
 };
 
-/** Every file below `dir`, by plain directory walking, as the test's own source of truth. */
 function filesBelow(dir: string): string[] {
   try {
     return readdirSync(dir, { recursive: true, withFileTypes: true })

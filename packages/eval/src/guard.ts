@@ -28,7 +28,6 @@ function filesGitSees(root: string): string[] {
 
 const isEvalData = (file: string) => file.endsWith(OFFER_SUFFIX) || file.endsWith(PAIR_SUFFIX);
 
-/** Real-Offer labels belong in the ignored data folder. */
 export function findStrayEvalData(
   root: string,
   list: (root: string) => string[] = filesGitSees,

@@ -2,8 +2,6 @@ import type { CheerioAPI } from "cheerio";
 import * as cheerio from "cheerio";
 import { clean } from "./german.js";
 
-/** Nothing here interprets what a value means. */
-
 type Selection = ReturnType<CheerioAPI>;
 
 export type Page = {
@@ -12,7 +10,6 @@ export type Page = {
   scripts: string;
   /** Label/value rows of the Kosten and Verfügbarkeit blocks, keyed by label without the colon. */
   rows: Map<string, Row>;
-  /** The key-facts bar (Zimmergröße, Gesamtmiete, Zimmer), keyed by label. */
   keyFacts: Map<string, Row>;
 };
 

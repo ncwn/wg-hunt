@@ -44,7 +44,6 @@ export function examplePreset(today: { year: number; month: number }): ExamplePr
       smoker: false,
       hasPets: false,
       languages: ["de", "en"],
-      // A central Berlin PLZ.
       places: [{ name: "work", plz: "10115" }],
     },
     filters,

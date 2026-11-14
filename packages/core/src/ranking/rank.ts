@@ -6,7 +6,6 @@ import { type Band, type Chip, type Effect, type Reason, toReason } from "./reas
 import { requirementChips } from "./requirements.js";
 import { RULES, type Rule, type RuleInput } from "./rules.js";
 
-/** Pure data: no database, no clock. */
 export type RankableOffer = {
   facts: OfferFacts;
   /** Epoch milliseconds. */
@@ -55,7 +54,6 @@ export function rankOffer(offer: RankableOffer, seeking: Seeking): Ranking {
     if (reason !== null) reasons.push(reason);
   }
 
-  // A hidden Offer still gets its reasons, so the seeker can see what the Filters made of it.
   const [hiddenBecause] = hiddenCausesOf(offer);
   const effects = new Set<Effect>(reasons.map((reason) => reason.effect));
   const band: Band = hiddenBecause

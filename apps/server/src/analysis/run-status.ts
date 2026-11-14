@@ -4,7 +4,6 @@ export type RunStatus = (typeof RUN_STATUSES)[number];
 export const RUN_STOP_REASONS = ["spend-cap-reached", "interrupted"] as const;
 export type RunStopReason = (typeof RUN_STOP_REASONS)[number];
 
-/** The problem types `POST /analysis/runs` refuses with. */
 export const START_RUN_REFUSALS = [
   "no-api-key",
   "api-key-refused",

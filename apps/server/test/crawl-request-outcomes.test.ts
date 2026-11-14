@@ -56,7 +56,6 @@ function harness(
   return { clock, sent, db, engine, drive, outcomes };
 }
 
-/** Lets the step reach the point it waits on (the fetch, or the handler). */
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe("the request log's outcomes", () => {

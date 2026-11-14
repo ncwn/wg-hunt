@@ -345,7 +345,6 @@ const RETITLED: SourceAdapter = {
   },
 };
 
-/** The Offers of `h`, read by rules that read the title differently. */
 function retitled(h: ReturnType<typeof bootOffers>) {
   return createOffers({
     db: h.runtime.db,
@@ -366,7 +365,6 @@ function readAnew(fetched: FetchedAd, html = fetched.html): FetchedAd {
   return { ...fetched, html, parsed };
 }
 
-/** As a crawl hands on a page it fetched, with `offers` behind it. */
 function arrives(
   h: ReturnType<typeof bootOffers>,
   offers: Offers,

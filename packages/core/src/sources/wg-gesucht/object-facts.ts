@@ -4,7 +4,6 @@ import { clean } from "./german.js";
 import { AMENITY_LABELS } from "./lexicon.js";
 import type { Page } from "./page.js";
 
-/** "Angaben zum Objekt": icon-keyed items. The icon class is the key; the text is the value. */
 function readIcons(page: Page): Map<string, string> {
   const { $ } = page;
   const icons = new Map<string, string>();

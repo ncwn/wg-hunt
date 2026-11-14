@@ -33,7 +33,6 @@ function berlin(ms: number) {
   return { day: get("day"), minuteOfDay: get("hour") * 60 + get("minute") };
 }
 
-/** Deterministic pseudo-random numbers in [0, 1). */
 function seeded(seed: number) {
   let a = seed;
   return () => {

@@ -10,10 +10,8 @@ export type Config = {
 
 export const DATABASE_FILE = "wg-hunt.sqlite";
 export const TOKEN_FILE = "access-token";
-/** Where `pnpm build` leaves the dashboard, relative to the project root. */
 const DASHBOARD_BUILD_DIR = "apps/dashboard/dist";
 
-/** `start` itself when run outside the repository. */
 export function findProjectRoot(start: string): string {
   for (let dir = resolve(start); ; dir = dirname(dir)) {
     if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;

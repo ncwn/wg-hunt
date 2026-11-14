@@ -5,7 +5,6 @@ import { type AnalysisStatus, usd } from "../analysis.js";
  * sit inside a description.
  */
 export function SpendMeter({ spend }: { spend: AnalysisStatus["spend"] }) {
-  // A limit of zero is spent before it starts: the bar is full.
   const max = spend.capUsd > 0 ? spend.capUsd : 1;
   const value = spend.capUsd > 0 ? Math.min(spend.spentUsd, max) : max;
   return (

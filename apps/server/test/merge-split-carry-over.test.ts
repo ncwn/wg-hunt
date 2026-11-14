@@ -17,7 +17,6 @@ const rowOf = (h: Harness, id: number) =>
 const setRow = (h: Harness, id: number, values: Partial<typeof offers.$inferInsert>) =>
   h.runtime.db.update(offers).set(values).where(eq(offers.id, id)).run();
 
-/** Two rooms of one flat: dedupe keeps them apart and links them as Siblings. */
 function twoRooms() {
   const h = bootOffers();
   ingestAds(
@@ -28,7 +27,6 @@ function twoRooms() {
   return h;
 }
 
-/** A room posted twice: dedupe collapses the second post into the first Offer. */
 function repostedRoom() {
   const h = bootOffers();
   ingestAds(h, { adId: 9000001, warmRent: 450 }, { adId: 9000002, warmRent: 480 });
@@ -61,7 +59,6 @@ const run = (contentHash: string | null): AnalysisRun => ({
   contentHash,
   log: [],
 });
-/** What the model read, told apart by the minimum stay. */
 const read = (months: number) =>
   ({
     anmeldung: { value: "unknown", origin: "model", quote: "" },
@@ -199,7 +196,6 @@ describe("a merge declares what it carries over (B9)", () => {
 });
 
 describe("a merge of two Offers that have both read the words it shows", () => {
-  /** The second post's page is the current one. */
   async function sameWordsSplit() {
     const h = bootOffers();
     const words = { title: "Zimmer in Mitte", text: OTHER_ROOM_TEXT };

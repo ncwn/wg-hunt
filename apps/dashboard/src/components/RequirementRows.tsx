@@ -48,7 +48,6 @@ type Parsed = { ok: true; value: unknown } | { ok: false; message: string };
 
 const LANGUAGE_CODE = /^[a-z]{2}$/;
 
-/** No rows is a value: the Offer states no Requirements. */
 export function parseRows(editor: RequirementsEditor, rows: RequirementRow[]): Parsed {
   const value: { kind: string; strictness: string; value: string }[] = [];
   for (const [index, row] of rows.entries()) {

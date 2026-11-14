@@ -32,7 +32,6 @@ function parseNumber(text: string): number | null | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** Not the browser's number input and its spinners. */
 export function NumberField({
   label,
   value,

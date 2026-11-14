@@ -12,7 +12,6 @@ export function retryAt(job: Pick<AnalysisJob, "failure" | "contentHash">): numb
   if (failure === null) return 0;
   const policy = policyOf(failure.kind);
   if (policy.perOffer === "free" || policy.perOffer === "not-a-failure") return 0;
-  // The words changed since it failed: this is a different Offer to the model.
   if (
     failure.contentHash !== null &&
     job.contentHash !== null &&

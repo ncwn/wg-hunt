@@ -19,7 +19,6 @@ function count(items: { enabled: boolean }[]) {
 
 export function SearchesPage({ api, events }: { api: ApiClient; events: EventStream }) {
   const { state, reload, create, update, remove, crawlNow } = useSearches(api, events);
-  // The Profile page can send the example preset's Search here to review and save.
   const location = useLocation();
   const navigate = useNavigate();
   const suggested = (location.state as { draftSearch?: SearchStart } | null)?.draftSearch;
@@ -31,8 +30,6 @@ export function SearchesPage({ api, events }: { api: ApiClient; events: EventStr
     if (suggested !== undefined) navigate(location.pathname, { replace: true, state: null });
   };
   const [draft, setDraft] = useState<DraftSearch>();
-  // Cards with their form or delete question open: each has its own primary button, so the top
-  // bar's steps back to secondary while any is open.
   const [openCards, setOpenCards] = useState<ReadonlySet<number>>(new Set());
   const cardOpen = useCallback(
     (id: number, open: boolean) =>

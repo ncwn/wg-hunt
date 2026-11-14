@@ -14,7 +14,6 @@ const offerPath = (id: number) => `/wg-zimmer-in-Teststadt-Mitte.${id}.html`;
 /** A results page ends in city id, category, a constant and the page number; an Offer page in its Ad ID. */
 const isResultsPage = (path: string) => /(\.\d+){4}\.html/.test(path);
 
-/** `onRequest` runs while the request is on its way. */
 function serve(h: Harness, pages: Record<string, number[]>, onRequest?: (path: string) => void) {
   h.behaviour.route = (path) => {
     onRequest?.(path);
@@ -98,12 +97,10 @@ describe("a later page a poll queued", () => {
   it("gives nothing to any Search when it comes back for a category its Search dropped", async () => {
     const h = pollingHarness();
     const search = h.addSearch({ categories: ["flatshare-room", "flat"] });
-    // Another Search with no request for flats either: no request is not the same request.
     const houses = h.addSearch({ city: "Hamburg", categories: ["house"] });
     h.polling.sync();
     const laterFlats = h.searchPath(search, 1, 1);
     serve(h, { [h.searchPath(search, 0, 1)]: [9000001], [laterFlats]: [9000002] }, (path) => {
-      // The edit lands while the later page is on its way: no sync can drop it any more.
       if (path === laterFlats) edit(h, search, { categories: ["flatshare-room"] });
     });
 
@@ -190,8 +187,6 @@ describe("a page a Sweep queued", () => {
     const search = h.addSearch({ categories: ["flatshare-room", "flat"] });
     h.addSearch({ city: "Hamburg", categories: ["house"] });
     h.polling.sync();
-    // The poll asks for the first page of flats, then the backfill does: the same URL, and only
-    // the second answer has a card. The edit lands while that second request is on its way.
     const flats = h.searchPath(search, 0, 1);
     let asked = 0;
     h.behaviour.route = (path) => {

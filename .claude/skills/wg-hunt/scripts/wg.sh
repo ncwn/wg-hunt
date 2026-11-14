@@ -11,13 +11,6 @@
 #   path     a `wg-hunt` on PATH (or WG_HUNT_CLI="node /somewhere/wg-hunt.mjs")
 #   compose  `docker compose exec` in a running wg-hunt project (WG_HUNT_COMPOSE_DIR, WG_HUNT_SERVICE)
 #   curl     the HTTP API at WG_HUNT_URL, for `api` and `ops`
-# Each is used only if the server answers /health through it; the CLI on PATH also needs to sign in,
-# else it is used only when the container is not there either, so its error says what to set up.
-# path and curl reach the address given (WG_HUNT_URL, else `wg-hunt login`'s, else this machine);
-# compose reaches the local container whatever that address is. So unless WG_HUNT_ROUTE asks for
-# it, compose is tried only for an address on this machine: none, 127.0.0.1, localhost or [::1].
-# The token is never printed, not even by `token rotate` (the CLI leaves it out under --json unless
-# given --print; do not pass --print). A non-zero exit writes one problem+json line to stderr.
 # Other settings: WG_HUNT_URL, WG_HUNT_TOKEN, WG_HUNT_DATA_DIR, WG_HUNT_CACHE_TTL (seconds, default 300).
 set -u
 
@@ -226,7 +219,6 @@ detect() {
   FROM_CACHE=0
   if [ -z "$fresh" ] && [ "$only" = "$WANTED" ] && read_cache; then FROM_CACHE=1; return 0; fi
   case "$only" in
-    # The container is this machine's instance, so it stands in only for an address on this machine.
     auto) try_path || { address_is_local && try_compose; } || path_answered || try_curl ;;
     path|cli) try_path || path_answered ;;
     compose|docker) try_compose ;;
@@ -261,8 +253,6 @@ exit_for_status() {
   esac
 }
 
-# A Crawl now the API took: exit 4 with a problem when only a person's Resume lets it run, which
-# is a stop in `waiting`, or no time given (`runsAt` null), as during a Cooldown a Resume follows.
 crawl_now_outcome() {
   local reply=$1 waiting
   waiting=$(json_string waiting <"$reply")
@@ -302,9 +292,6 @@ api_call() {
   out=$(mktemp "${TMPDIR:-/tmp}/wg-hunt-reply.XXXXXX") || die internal-error "cannot create a temporary file"
   head=$(mktemp "${TMPDIR:-/tmp}/wg-hunt-head.XXXXXX") || { rm -f "$out"; die internal-error "cannot create a temporary file"; }
   args=(-sS --max-time 60 -o "$out" -D "$head" -w '%{http_code}' -X "$method" -H 'Accept: application/json')
-  # The Profile, the Filters and the crawl and analysis settings are written whole; If-Match makes
-  # the server refuse (412, stale-revision) a write made from a copy that changed since. A bare
-  # revision gets the quotes an entity tag has, as the CLI's --if-match does.
   if [ -n "$if_match" ]; then
     case "$if_match" in
       *[$'\r\n']*) rm -f "$out" "$head"; die usage-error "--if-match takes one revision, such as \"3f2a…\"" ;;
@@ -358,7 +345,6 @@ ops() {
   fi
 }
 
-# On a CLI route only the CLI knows which address and token it uses, so its own `doctor` says.
 doctor() {
   detect "$WANTED" fresh
   local url token sign_in="" report err code=0

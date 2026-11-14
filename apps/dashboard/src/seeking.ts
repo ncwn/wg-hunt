@@ -73,10 +73,6 @@ export type PreviewState =
 
 const REST_MS = 200;
 
-/**
- * A reconnect (after signing in again, say) previews the draft again, so a refusal from while the
- * session was gone doesn't stay.
- */
 export function useBandPreview(
   api: ApiClient,
   draft: Seeking | null,

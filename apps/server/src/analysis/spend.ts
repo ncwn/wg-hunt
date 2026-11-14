@@ -122,7 +122,6 @@ export function createSpendLedger(deps: {
   const headroomMicros = (): number =>
     capMicros() - spentMicros() - realtimeReserved - batchReservedMicros();
 
-  /** The hold itself is always checked against `headroomMicros`. */
   const headroomBetweenCallsMicros = (): number => headroomMicros() + realtimeReserved;
 
   /** Worst case: all input as cache writes plus the maximum output. Nothing unpriced is sent. */
@@ -148,7 +147,6 @@ export function createSpendLedger(deps: {
       prefix: ANALYSIS_PREFIX,
       userTurn: "x".repeat(NOMINAL_OFFER_CHARS),
     };
-    // Unpriced: no call is worth making.
     return estimateMicros(request, options) ?? Number.POSITIVE_INFINITY;
   }
 

@@ -58,7 +58,6 @@ function boot(start = MORNING, answers: SourceResponse[] = []) {
       poll: { nextAt: string | null; problem: string | null };
     }>;
   };
-  // The polls only: a Sweep queues its own page jobs, tested with the Sweeps.
   const queue = async () =>
     (await (await call("GET", "/crawl")).json()).nextJobs.filter(
       (job: { kind: string }) => job.kind === "poll",
@@ -146,7 +145,7 @@ describe("POST /searches/{id}/crawl-now", () => {
   it("pulls a waiting poll forward to now, and says when it will run", async () => {
     const { createSearch, queue, call, runtime, clock } = boot();
     const search = await createSearch();
-    await runtime.crawl.step(); // the first poll runs; the next is 30-60 min away
+    await runtime.crawl.step();
     const [waiting] = await queue();
     expect(Date.parse(waiting.dueAt)).toBeGreaterThanOrEqual(MORNING + 30 * MINUTE);
 
@@ -154,7 +153,6 @@ describe("POST /searches/{id}/crawl-now", () => {
 
     expect(res.status).toBe(202);
     const body = await res.json();
-    // The gap between requests still applies: 20-60 s after the poll that just ran.
     expect(body).toMatchObject({ queued: 1, waiting: "gap" });
     expect(Date.parse(body.runsAt)).toBeGreaterThanOrEqual(clock.now + 15_000);
     expect(Date.parse(body.runsAt)).toBeLessThanOrEqual(clock.now + 60_000);
@@ -211,7 +209,7 @@ describe("POST /searches/{id}/crawl-now", () => {
       { status: 200, body: cubaPage() },
     ]);
     const search = await createSearch();
-    await runtime.crawl.step(); // the poll meets a Bot check
+    await runtime.crawl.step();
     const until = Date.parse((await (await call("GET", "/crawl")).json()).cooldown.until);
     clock.now += 5 * MINUTE;
 
@@ -231,9 +229,9 @@ describe("POST /searches/{id}/crawl-now", () => {
       { status: 200, body: cubaPage() },
     ]);
     const search = await createSearch();
-    await runtime.crawl.step(); // the poll meets a Bot check; the poll comes back for the probe
+    await runtime.crawl.step();
     clock.now += 2 * HOUR;
-    await runtime.crawl.step(); // the probe meets a second one: a Resume is owed after this one
+    await runtime.crawl.step();
     clock.now += 5 * MINUTE;
     expect(await (await call("GET", "/crawl")).json()).toMatchObject({
       state: "cooling-down",

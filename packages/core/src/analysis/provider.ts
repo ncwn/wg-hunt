@@ -1,7 +1,6 @@
 import type { ModelFactsOutput } from "../offer-facts/index.js";
 import { ERROR_KINDS } from "./error-kinds.js";
 
-/** Which of these a given model takes is the price table's business. */
 export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 export type Effort = (typeof EFFORTS)[number];
 
@@ -85,7 +84,6 @@ export const PROVIDER_ERROR_KINDS = [
   /** A batch request that was not processed within 24 hours. */
   "expired",
   "canceled",
-  /** The monthly spend cap stopped the call before it was sent. */
   "spend_cap_reached",
 ] as const;
 export type ProviderErrorKind = (typeof PROVIDER_ERROR_KINDS)[number];

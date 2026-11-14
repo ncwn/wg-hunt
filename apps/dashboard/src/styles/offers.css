@@ -141,7 +141,6 @@
   }
 }
 
-/* Without the fade, a closing panel's scrim just goes. */
 @media (prefers-reduced-motion: reduce) {
   .offer-panel-scrim.is-closing {
     visibility: hidden;

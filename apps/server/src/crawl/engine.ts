@@ -104,10 +104,8 @@ type HitEntry = {
 
 type Pause =
   | { reason: Exclude<PauseReason, "layout-changed">; at: number }
-  // No `cause` for one stored before causes were recorded.
   | { reason: "layout-changed"; at: number; cause?: PauseCause; path?: string; savedAs?: string };
 
-/** What the latest Bot check still asks of the crawl. */
 type Guard =
   | { phase: "clear" }
   // Stays past `until`, until the probe after it is answered or a Resume ends it, so its level is
@@ -780,7 +778,6 @@ export function createCrawlEngine(deps: {
   }
 
   return {
-    /** Null when the same kind and path is already queued. Throws on a forbidden path. */
     enqueue(job: Omit<NewJob, "dueAt"> & { dueAt?: number }): Job | null {
       const now = clock();
       const queued = addJob(db, { ...job, dueAt: job.dueAt ?? now });
@@ -793,7 +790,6 @@ export function createCrawlEngine(deps: {
       idleListeners.push(listener);
     },
 
-    /** A job dropped on a Bot check. */
     onDropped(listener: (job: Job) => void): void {
       dropListeners.push(listener);
     },
@@ -810,12 +806,10 @@ export function createCrawlEngine(deps: {
 
     status,
 
-    /** The next request is the single probe after a Cooldown. */
     probing(): boolean {
       return probePending(loadState(), clock());
     },
 
-    /** The single source for the caps. */
     caps(pacing: CapSettings = loadCrawlSettings(db).pacing): CapsInForce {
       return capsAt(clock(), pacing, loadState());
     },
@@ -825,7 +819,6 @@ export function createCrawlEngine(deps: {
       return nextRequestAt(clock(), loadCrawlSettings(db).pacing, loadState());
     },
 
-    /** Throws a ZodError on a broken constant. */
     saveSettings(value: CrawlSettings): CrawlSettings {
       const saved = saveCrawlSettings(db, value, clock());
       publishStatus();

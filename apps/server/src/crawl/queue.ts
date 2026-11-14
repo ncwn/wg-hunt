@@ -9,7 +9,6 @@ export type Job = {
   kind: JobKind;
   /** Lower is served first. */
   priority: number;
-  /** Path and query on the Source. */
   path: string;
   payload: unknown;
   dueAt: number;
@@ -40,10 +39,6 @@ function toJob(row: Row): Job {
   };
 }
 
-/**
- * Null when the same kind and path is already waiting; that job only moves its due time earlier,
- * and keeps its payload and its priority.
- */
 export function addJob(db: Db, job: NewJob): Job | null {
   const { pathname, search } = checkSourcePath(job.path);
   const row = db

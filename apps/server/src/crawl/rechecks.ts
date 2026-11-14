@@ -65,7 +65,6 @@ function waitingRecheck(
 
 const keyOf = (source: Source, adId: string) => `${source}:${adId}`;
 
-/** When the page may be tried again after a Recheck that brought nothing usable; null if none did. */
 const retryAtOf = (ad: Pick<OfferAdRow, "recheckedAt">): number | null =>
   ad.recheckedAt === null ? null : ad.recheckedAt.getTime() + RECHECK_RETRY_HOURS * HOUR;
 

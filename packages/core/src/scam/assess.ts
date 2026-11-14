@@ -27,7 +27,6 @@ type ScamSignalKindAll = (typeof SCAM_SIGNAL_KINDS_ALL)[number];
 
 type ScamStrength = "strong" | "soft";
 
-/** The seeker's override of the verdict; null when cleared. */
 type ScamMark = "scam" | "not";
 
 type ScamSignal = {

@@ -26,7 +26,6 @@ function toTryAgain(s: AnalysisStatus): string {
     case "replace-key":
       return "To try again, replace the refused Anthropic API key under Advanced › Keys.";
     case "raise-cap":
-      // With no reset date, what is in flight holds the rest of the limit, for minutes.
       return s.at === null
         ? "Ads being read right now hold the rest of the monthly limit: try again once they're done."
         : `The monthly limit is reached: try again once it resets on ${day(s.at)}, or with a higher limit.`;
@@ -66,7 +65,6 @@ export function analysisNote(s: AnalysisStatus): string | null {
     case "waiting-for-in-flight":
       return "Not read yet: ads being read right now hold the rest of the monthly limit. This one is read once they're done.";
     case "kept-previous":
-      // The seeker asked for this reading, and nothing tries it again by itself.
       if (s.reason === OUTCOME_NOT_STORED) {
         return `The last reading could not be saved; the earlier one is shown. ${toTryAgain(s)}`;
       }

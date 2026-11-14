@@ -14,7 +14,6 @@ export type AnalysisRun = {
   effort: ModelChoice["effort"];
   /** `null` when escalation was off. */
   escalation: ModelChoice | null;
-  /** The whole Offer was read again at the escalation setting. */
   escalated: boolean;
   analyzedAt: string;
   contentHash: string | null;
@@ -27,7 +26,6 @@ export type AnalysisRun = {
 export type AnalysisFailure = {
   kind: string;
   at: string;
-  /** Failed attempts in a row for the same words. */
   attempts?: number;
   contentHash?: string | null;
 };
@@ -56,7 +54,6 @@ export type OfferAnalysis =
 
 type Columns = Pick<OfferRow, "analysisState" | "modelFacts" | "analysis">;
 
-/** What the `offers.analysis` column holds. */
 type StoredAnalysis = {
   run?: AnalysisRun;
   failure?: AnalysisFailure;

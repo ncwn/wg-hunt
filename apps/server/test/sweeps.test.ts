@@ -25,7 +25,6 @@ describe("the daily Sweep", () => {
 
     await h.crawlUntil(berlin(5, 12));
     const sweep = h.requestsOf("deeper-page", settledAt, berlin(5, 12));
-    // Three pages of results and the empty page that ends them.
     expect(pageNumbers(sweep)).toEqual([0, 1, 2, 3]);
     for (const request of sweep) {
       expect(request.path).toContain("noDeact=1");
@@ -274,7 +273,6 @@ describe("Stale confirmation", () => {
 
   it("keeps an Offer Tracked while another Search still shows it", async () => {
     const { h, search } = await settled(3);
-    // A second Search with another URL that lists the same cards.
     await h.addSearch({ priceCeiling: 900 });
     await h.crawlUntil(berlin(4, 23, 50));
 

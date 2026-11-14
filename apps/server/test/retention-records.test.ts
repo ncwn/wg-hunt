@@ -68,8 +68,6 @@ describe("the Offer record's 90 days", () => {
     nights(h, 5);
     expect(recordExists(h, id)).toBe(true);
 
-    // Quiet again 8 nights after that Bump, with a clock of its own: the old one would have run
-    // out long ago.
     nights(h, 55);
     expect(recordExists(h, id)).toBe(true);
     nights(h, 37);
@@ -278,7 +276,6 @@ describe("Ad IDs that never became an Offer", () => {
 
   it("clears the Search matches an earlier prune left without their card", async () => {
     const { h, adId } = await oneOffer();
-    // The card's row gone, its match still there.
     h.runtime.db
       .insert(searchMatches)
       .values({

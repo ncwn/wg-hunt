@@ -381,7 +381,6 @@ function MonthlyLimit({
   onSaved: (settings: Doc<AnalysisSettings>) => void;
 }) {
   const [draft, setDraft] = useState<number | null | undefined>(undefined);
-  // Not a write's outcome: what was typed isn't an amount, so nothing was sent.
   const [invalid, setInvalid] = useState(false);
   const saving = useMutation(stored?.data.monthlySpendCapUsd);
   const value = draft === undefined ? (stored?.data.monthlySpendCapUsd ?? null) : draft;
@@ -411,7 +410,6 @@ function MonthlyLimit({
       return saving.reset();
     }
     await saving.run(async () => {
-      // Only the limit changes: the rest is the latest saved, whatever was read when the page opened.
       const written = await changeLatest({
         start,
         read: () => api.GET("/settings/analysis"),

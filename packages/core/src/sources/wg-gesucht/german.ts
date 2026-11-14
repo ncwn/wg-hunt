@@ -12,13 +12,11 @@ export function parseEuros(text: string): number | undefined {
   return Number(cleaned.replace(/\./g, "").replace(",", "."));
 }
 
-/** "2", "1,5", "18m²", "18,5 m²" -> number. */
 export function parseNumber(text: string): number | undefined {
   const match = clean(text).match(/^(\d+(?:,\d+)?)\s*(?:m²|qm)?$/i);
   return match?.[1] ? Number(match[1].replace(",", ".")) : undefined;
 }
 
-/** "01.12.2026" -> "2026-12-01". */
 export function parseDate(text: string): string | undefined {
   const match = clean(text).match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
   if (!match) return undefined;
@@ -45,7 +43,6 @@ const MONTHS = [
   "dezember",
 ];
 
-/** "Oktober 2026" -> "2026-10". */
 export function parseMonth(text: string): string | undefined {
   const match = clean(text).match(/^(\p{L}+)\s+(\d{4})$/u);
   const month = MONTHS.indexOf((match?.[1] ?? "").toLowerCase());

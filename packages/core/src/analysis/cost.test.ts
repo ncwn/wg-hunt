@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { usageCostUsd } from "./cost.js";
 
-/** Claude Haiku 5.5's published prices. */
 const HAIKU = {
   inputUsdPerMTok: 0.1,
   outputUsdPerMTok: 0.5,

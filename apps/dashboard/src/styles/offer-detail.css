@@ -174,7 +174,6 @@
   text-align: left;
 }
 
-/* The rows don't open anything, so they don't light up on hover. */
 .od-facts tbody tr:hover td {
   background: none;
 }
@@ -209,7 +208,6 @@
   gap: var(--space-1);
 }
 
-/* Lined up with the first line of the row's text rather than below it. */
 .od-facts .od-fact-actions {
   margin-top: -6px;
 }

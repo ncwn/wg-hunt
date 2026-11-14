@@ -37,7 +37,6 @@ export type AnalyseOfferArgs = {
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** API errors are not escalation. */
 export async function callWithRetry(
   provider: AnalysisProvider,
   request: AnalysisRequest,

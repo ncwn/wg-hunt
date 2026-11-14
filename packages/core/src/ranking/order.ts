@@ -35,7 +35,6 @@ function sortValue(
       return rent.state === "known" ? rent.value : null;
     }
     case "size": {
-      // Biggest first.
       const size = readFact<number>(facts, "roomSize");
       return size.state === "known" ? -size.value : null;
     }

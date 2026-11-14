@@ -12,21 +12,15 @@ import type { HeldPacing } from "./components/PacingEditor.js";
 import type { Saved, Seeking } from "./seeking.js";
 import type { HeldAnalysis } from "./settings/AnalysisSection.js";
 
-/**
- * The seeker's unsaved Profile and Filters, with the saved copy they were made from, so the draft
- * can be laid over a newer saved copy instead of saving the old one back.
- */
 export type HeldDraft = { base: Saved; draft: Seeking };
 
 type SeekingDraft = {
-  /** Null when nothing differs from what is saved. */
   held: HeldDraft | null;
   setHeld: Dispatch<SetStateAction<HeldDraft | null>>;
 };
 
 const Context = createContext<SeekingDraft>({ held: null, setHeld: () => {} });
 
-/** Held above the pages so it survives a visit to another page and the nav rail can mark it. */
 export function SeekingDraftProvider({ children }: { children: ReactNode }) {
   const [held, setHeld] = useState<HeldDraft | null>(null);
   useUnsavedGuard(held !== null);
@@ -37,7 +31,6 @@ export function SeekingDraftProvider({ children }: { children: ReactNode }) {
 export const useSeekingDraft = () => useContext(Context);
 
 type SettingsDraft = {
-  /** Each null when that form has nothing unsaved. */
   pacing: HeldPacing | null;
   setPacing: Dispatch<SetStateAction<HeldPacing | null>>;
   analysis: HeldAnalysis | null;

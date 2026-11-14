@@ -30,7 +30,6 @@ type RentPoint = {
 
 export type RentSeries = {
   points: RentPoint[];
-  /** How many points the whole range holds; `points` fill its last slots. */
   slots: number;
   change?: string;
 };
@@ -86,7 +85,6 @@ export function rentSeries(
 
 export type OfferRentSeries = { points: number[]; labels: string[]; change: string };
 
-/** Ends today at the last rent, so an unchanged rent draws a flat line. */
 export function offerRentSeries(
   history: { observedAt: string; warmRent: number }[],
   now: Date = new Date(),

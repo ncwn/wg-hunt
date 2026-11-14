@@ -1,5 +1,3 @@
-/** Age comes from the Bump times polls and Sweeps saw, so it costs no request. */
-
 import type { PageStatus } from "@wg-hunt/core";
 
 export const STALE_AFTER_DAYS = 7;

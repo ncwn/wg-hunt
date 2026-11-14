@@ -49,7 +49,6 @@ export function ListField({
 
 type Option<T extends string> = { value: T; label: string };
 
-/** The record's key order is the order on screen. */
 export const optionsOf = <T extends string>(labels: Record<T, string>): Option<T>[] =>
   (Object.entries(labels) as [T, string][]).map(([value, label]) => ({ value, label }));
 

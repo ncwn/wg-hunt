@@ -57,7 +57,6 @@ async function change(h: Boot, patch: Record<string, unknown>) {
   const res = await h.json("PUT", "/settings/analysis", { ...(await settingsOf(h)), ...patch });
   expect(res.status).toBe(200);
 }
-/** Another analysis version than the default, Haiku 5.5 at medium. */
 const useSonnet = (h: Boot) => change(h, { model: "claude-sonnet-5-5", effort: "medium" });
 
 async function analysedOffers(h: Boot, count: number) {

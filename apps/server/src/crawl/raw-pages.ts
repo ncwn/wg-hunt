@@ -6,7 +6,6 @@ import type { JobKind } from "./constants.js";
 
 export const UNEXPECTED_PAGES_DIR = "unexpected-pages";
 
-/** In the (git-ignored) data folder. */
 export function createRawPageStore(dataDir: string) {
   return (page: { at: number; kind: JobKind; path: string; body: string }): string => {
     const dir = join(dataDir, UNEXPECTED_PAGES_DIR);
@@ -18,7 +17,6 @@ export function createRawPageStore(dataDir: string) {
   };
 }
 
-/** A wipe and the prune delete these pages. */
 export function createRawPageCheck(dataDir: string) {
   return (savedAs: string): boolean => {
     try {

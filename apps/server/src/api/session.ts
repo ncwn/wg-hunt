@@ -87,12 +87,10 @@ export const registerSession: ApiModule = (api, { token: access, sessions }) => 
     return c.body(null, 204);
   });
 
-  // `requireAuth` has already rejected unauthenticated requests by the time this runs.
   api.openapi(checkSessionRoute, (c) => c.body(null, 204));
 
   api.openapi(rotateTokenRoute, (c) => {
     const fresh = sessions.rotateToken();
-    // Every session has ended; the dashboard that asked gets a new one on the new token.
     if (c.get("via") === "cookie") startSession(c, sessions);
     c.header("Cache-Control", "no-store");
     return c.json({ token: fresh }, 200);

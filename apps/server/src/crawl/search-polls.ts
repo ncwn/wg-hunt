@@ -250,7 +250,6 @@ export function createSearchPolling(deps: {
     return due.length === 0 ? null : Math.min(...due);
   }
 
-  /** The polls still wait for the limits. */
   function crawlNow(search: SearchRow): CrawlNowResult {
     if (!search.enabled) return { ok: false, reason: "disabled" };
     const requests = pollRequests(search);
@@ -595,7 +594,6 @@ export function createSearchPolling(deps: {
     routePages(type: string, handler: JobHandler): void {
       pageRoutes.set(type, handler);
     },
-    /** Called with every card of an Ad ID that was already known. */
     onAdSeen(listener: (sighting: AdSighting) => void): void {
       sightingListeners.push(listener);
     },

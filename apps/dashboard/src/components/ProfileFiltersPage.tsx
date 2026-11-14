@@ -75,7 +75,6 @@ export function ProfileFiltersPage({ api, events }: { api: ApiClient; events?: E
   const example = useMutation();
   const navigate = useNavigate();
 
-  /** Resolves to why it couldn't; a quiet read that fails leaves the page as it is. */
   const load = useCallback(
     async (quiet = false): Promise<string | undefined> => {
       if (!quiet) setLoaded({ status: "loading" });
@@ -153,7 +152,6 @@ export function ProfileFiltersPage({ api, events }: { api: ApiClient; events?: E
     else loadPreset();
   }
 
-  /** Focus goes back to the button that asked, not to the page. */
   function stopAsking() {
     if (!replacing) return;
     setReplacing(false);
@@ -224,7 +222,6 @@ export function ProfileFiltersPage({ api, events }: { api: ApiClient; events?: E
       )}
       {/* With a draft the preview panel says it; without one there is no panel to say it in. */}
       {!draft && problem && <Notice tone="alarm">{problem}</Notice>}
-      {/* One message in this spot: with the example's Search, the news heads it. */}
       {presetSearch ? (
         <div className="pf-suggest">
           <Notice tone="info" title={notice ?? "From the example"}>

@@ -48,7 +48,6 @@ export function OverviewPage({ api, events }: { api: ApiClient; events: EventStr
   const newNear = fresh.length - newMatches;
   const shortlisted = ready?.shortlist;
   const contacted = shortlisted?.filter((o) => o.marks.contacted).length;
-  // Until the lists or the counts are read, a figure would be a guess: "–" rather than 0.
   const matches = counts?.bands.match ?? ready?.matches.length;
   // Only the new Near matches are read here, so their number waits for the counts rather than
   // showing one figure and then another.
@@ -95,7 +94,6 @@ export function OverviewPage({ api, events }: { api: ApiClient; events: EventStr
           </Button>
         </div>
       )}
-      {/* In phone order: is it hunting, the rent, the counts, then what's new. */}
       <div className="ov">
         <div className="ov-status">
           <HuntCard />

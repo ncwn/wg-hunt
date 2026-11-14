@@ -57,7 +57,6 @@ export async function driveCrawl(
 
 export function fakeSource() {
   const site = {
-    /** Page 1 of the flatshare-room category. */
     cards: [] as CardSpec[],
     flatCards: [] as CardSpec[],
     pages: new Map<number, string>(),

@@ -14,7 +14,6 @@ import type { SnapshotStore } from "./snapshots.js";
 export const DETAIL_STATES = ["pending", "fetched", "failed", "skipped", "priced-out"] as const;
 export type DetailState = (typeof DETAIL_STATES)[number];
 
-/** No Offer is made of them. */
 export const SETTLED_WITHOUT_PAGE = [
   "skipped",
   "failed",
@@ -56,8 +55,7 @@ export function afterFailedFetch(attempts: number): {
 }
 
 /**
- * The one writer for a fetched detail page, whichever crawl fetched it. A new page that only says
- * "deleted" keeps the stored one: it has nothing the stored one lacks.
+ * A new page that only says "deleted" keeps the stored one: it has nothing the stored one lacks.
  */
 export function storeFetchedPage(
   deps: {

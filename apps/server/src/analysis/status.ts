@@ -57,17 +57,10 @@ export type AnalysisStatusInput = {
   contentHash: string | null;
   held: { stage: 1 | 2; since: Date } | null;
   reading: boolean;
-  /**
-   * Its call went out and its outcome could not be stored, so the worker sends it again only after
-   * a new click.
-   */
   unstored: boolean;
-  /** A Re-analyse click answered `202` whose read has not ended. */
   owed: boolean;
-  /** The worker last found that what is left of the cap pays for neither of this Offer's calls. */
   noRoom: boolean;
   key: KeyState;
-  /** `fitsRun`: what is left of the cap pays for one Offer's whole read in a run. */
   cap: { state: CapState; resetsAt: string | null; fitsRun: boolean };
   /** Epoch ms. */
   now: number;
@@ -129,7 +122,6 @@ function afterFailure(
   return failure !== null && isPageFailure(failure.kind) ? { ...kept, next: "recheck" } : kept;
 }
 
-/** A failure that waits for a click is left to the caller. */
 function blocker(input: AnalysisStatusInput): AnalysisStatus | undefined {
   if (input.key === "absent") return make("waiting-for-key");
   if (input.key === "refused") return make("key-refused", { reason: "unauthorized" });

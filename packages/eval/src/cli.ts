@@ -57,7 +57,6 @@ const DEFAULT_MODEL = "claude-haiku-5-5";
 
 class UsageError extends Error {}
 
-/** Logs and errors show project-relative paths only. */
 function shown(path: string, root: string): string {
   const rel = relative(root, path);
   return rel === "" || rel === ".." || rel.startsWith(`..${sep}`)
@@ -148,10 +147,6 @@ type SetName = (typeof SETS)[number];
 
 type ModelArgs = { model: ModelChoice; escalation: ModelChoice | null; prices: Price[] };
 
-/**
- * Each member holds only what its command or mode can use, so an option that would do nothing has
- * nowhere to go and is refused while parsing.
- */
 type Request =
   | { command: "help" }
   | { command: "compare"; a: string; b: string }

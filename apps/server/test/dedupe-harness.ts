@@ -32,7 +32,6 @@ export type AdSpec = {
   roomSize?: number;
   flatSize?: number;
   street?: string;
-  /** The Zimmer free text. */
   text?: string;
   /**
    * The original file names of the photos, without extension. Each Ad ID uploads its photos
@@ -45,7 +44,6 @@ export type AdSpec = {
     /** `"Mai 2020"`: how the page writes "Mitglied seit". */
     memberSince?: string;
     company?: boolean;
-    /** Whether the page shows the Verifiziert badge. The fixture does by default. */
     verified?: boolean;
   };
   minutesOld?: number;

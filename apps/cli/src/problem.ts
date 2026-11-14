@@ -10,10 +10,6 @@ export const EXIT = {
 
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];
 
-/**
- * This table is the contract: `wg.sh` mirrors it (between its `exit-by-type` markers) and the
- * skill's SKILL.md describes it.
- */
 export const EXIT_BY_TYPE = {
   unauthorized: EXIT.error,
   "invalid-token": EXIT.error,
@@ -76,10 +72,6 @@ export type Problem = {
   [extension: string]: unknown;
 };
 
-/**
- * For a type the table does not know, such as a newer server's: every 409 (and 412) is the API
- * declining because of the state it is in.
- */
 export function exitCodeForStatus(status: number | undefined): ExitCode {
   if (status === 404) return EXIT.notFound;
   if (status === 409 || status === 412) return EXIT.refused;

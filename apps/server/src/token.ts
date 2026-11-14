@@ -4,7 +4,6 @@ import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "
 /** 32 random bytes in base64url. */
 export const MIN_TOKEN_LENGTH = 43;
 
-/** A file that is empty or too short to be one of ours is replaced rather than trusted. */
 export function loadOrCreateToken(file: string): string {
   if (existsSync(file)) {
     const existing = readFileSync(file, "utf8").trim();

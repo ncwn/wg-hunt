@@ -16,10 +16,6 @@ export type GlobalOptions = { json?: boolean; url?: string };
 
 export type Ctx = {
   io: Io;
-  /**
-   * Set by a command whose call succeeded but whose outcome is a non-zero exit, such as a Crawl now
-   * that waits for a Resume.
-   */
   outcome: CliError | undefined;
   /** Never switched on by itself (not by a pipe, not by CI). */
   isJson(): boolean;
@@ -53,7 +49,6 @@ export function createCtx(io: Io, globals: () => GlobalOptions): Ctx {
     const { url, urlSource, tokenSource, savedUrl } = signed;
     if (!warned && urlSource === "flag" && tokenSource === "config" && savedUrl) {
       warned = true;
-      // The address was typed, so the request still goes there.
       if (!sameOrigin(url, savedUrl)) {
         warn(
           `the token \`wg-hunt login\` saved belongs to ${savedUrl}, not to ${url}; it is sent all the same.`,

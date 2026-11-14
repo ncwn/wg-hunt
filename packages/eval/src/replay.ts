@@ -3,10 +3,6 @@ import type { AnalysisProvider, ModelFactsOutput } from "@wg-hunt/core";
 /** Roughly four characters to a token; good enough to size a scripted call. */
 const CHARS_PER_TOKEN = 4;
 
-/**
- * So the default run needs no network, key or money. It tests the checks, the merge and the
- * scoring, not any model.
- */
 export function replayProvider(answers: readonly ModelFactsOutput[]): AnalysisProvider {
   let call = 0;
   return {

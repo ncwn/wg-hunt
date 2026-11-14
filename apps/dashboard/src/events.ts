@@ -8,7 +8,6 @@ type AnalysisProgress = {
   offerId: number;
   status: OfferSummary["analysisStatus"];
   awaiting: number;
-  /** The month's spend so far. */
   spentUsd: number;
 };
 type AnalysisRunProgress = {
@@ -52,7 +51,6 @@ const EVENT_TYPES: ServerEvent["type"][] = [
 ];
 
 export type SessionEndReason = "signed-out" | "token-rotated" | "expired";
-/** `unauthorized`: a plain 401. */
 export type SessionLoss = SessionEndReason | "unauthorized";
 
 /** `EventSource.CLOSED`, which a stand-in may not define. */
@@ -237,7 +235,6 @@ export function createEventSourceStream(
   };
 }
 
-/** How long a burst of events (a saved Filter re-bands many Offers at once) may take to settle. */
 const SETTLE_MS = 300;
 
 export function settle(run: () => void, ms: number = SETTLE_MS) {

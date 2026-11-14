@@ -211,8 +211,6 @@ describe("when the cap is reached", () => {
   });
 
   it("stops further spend after a call that used more than it was reserved", async () => {
-    // The model uses far more than the estimate allowed for (a bug, or an unexpected rate): the
-    // result is over the cap, and nothing more is sent.
     const h = boot({ usage: usage({ inputTokens: 3_000_000, outputTokens: 0 }) });
     await setKey(h);
     await change(h, { monthlySpendCapUsd: 0.1 });
@@ -393,7 +391,6 @@ describe("the cap and the Batch API", () => {
   });
 
   it("sends the rest once the batches in flight have given back what they reserved", async () => {
-    // Plenty for the actual cost, not for every worst case at once: the run goes out in waves.
     const h = await fiveOutdated({ cap: 0.3, size: 2, usage: usage() });
     const { body: run } = await h.json("POST", "/analysis/runs");
 
@@ -483,7 +480,6 @@ describe("a batch that may have been sent when the process stopped", () => {
     first.site.cards = first.freshCards([9000001]);
     await first.addSearch();
     await first.crawl();
-    // A batch row that was written before sending and never finished.
     first.runtime.db.$client
       .prepare(
         "insert into analysis_batches (state, reservedMicros, requestCount, createdAt) values ('submitting', 123456, 1, 0)",

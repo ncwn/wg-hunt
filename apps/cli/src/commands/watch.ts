@@ -95,10 +95,7 @@ function summary({ event, data }: ServerEvent): string {
 
 const clock = (ms: number) => new Date(ms).toTimeString().slice(0, 8);
 
-/**
- * It is no event to count: watching again with the same token gets 401, so it ends the watch as a
- * problem.
- */
+// Watching again with the same token gets 401, so this ends the watch as a problem.
 function sessionEnded(data: unknown, seen: number, source: SignedConnection["tokenSource"]) {
   const reason = (data as { reason?: unknown } | null)?.reason;
   const why =

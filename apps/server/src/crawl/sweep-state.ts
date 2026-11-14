@@ -16,7 +16,6 @@ export type SweepState =
   | { status: "idle" }
   /** Epoch ms. */
   | { status: "scheduled"; mode: SweepMode; startAt: number }
-  /** `startedAt` is when the first page was read. */
   | {
       status: "running";
       mode: SweepMode;
@@ -64,7 +63,6 @@ export function isComplete(state: SweepState, categories: readonly Category[]): 
   );
 }
 
-/** The one place a Sweep changes. */
 export function transition(prev: Sweep | InvalidSweep | undefined, event: SweepEvent): Sweep {
   const generation = (prev?.generation ?? 0) + 1;
   const lastFinishedAt = prev === undefined || "invalid" in prev ? null : prev.lastFinishedAt;

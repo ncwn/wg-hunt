@@ -308,7 +308,6 @@ const WAIT_PHRASES: Record<WaitReason, string> = {
   wiped: "the Offer data was deleted, which paused the crawl until a Resume",
 };
 
-/** A failed handler may not mean a strange page. */
 function waitPhrase(waiting: WaitReason, cause: PauseCause | null): string {
   if (waiting === "layout-changed" && cause === "handler-error") {
     return "wg-hunt failed while handling a page, which paused the crawl";
@@ -332,7 +331,6 @@ function crawlNowMessage(
   if (result.waiting === null) return "Polling as soon as the request queue gets to it.";
   const why = waitPhrase(result.waiting, cause);
   if (result.runsAt === null) {
-    // A Cooldown that a Resume has to follow: the Resume is refused until it is over.
     const after = result.waiting === "cooldown" ? "the break is over and " : "";
     return `Queued, but nothing is sent until ${after}you press Resume: ${why}.`;
   }

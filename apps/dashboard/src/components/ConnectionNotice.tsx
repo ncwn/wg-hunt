@@ -25,7 +25,6 @@ export function pausedLine(state: StreamState, now: Date = new Date()): string |
       return `Live updates paused: wg-hunt didn't answer. Trying again at ${when}.`;
     }
     default:
-      // Closed, connecting and live need no word; an ended stream has the sign-in over it.
       return undefined;
   }
 }

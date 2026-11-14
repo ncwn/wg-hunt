@@ -101,7 +101,6 @@ export function bootSweep(
     return { status: res.status, body: (await res.json()) as any };
   }
 
-  /** Polls once a day, so a test sees what the Sweep does. */
   async function addSearch(body: object = {}) {
     const res = await json("POST", "/searches", {
       city: "Berlin",

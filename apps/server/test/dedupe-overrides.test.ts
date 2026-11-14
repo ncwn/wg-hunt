@@ -29,7 +29,6 @@ const detailOf = async (h: Harness, adId: number) =>
   (await h.json("GET", `/offers/lookup?adId=${adId}`)).body;
 const adIds = (offer: { ads: { adId: string }[] }) => offer.ads.map((ad) => ad.adId);
 
-/** Two rooms of one flat: dedupe keeps them apart and links them as Siblings. */
 function twoRooms() {
   const h = bootOffers();
   ingestAds(
@@ -40,7 +39,6 @@ function twoRooms() {
   return h;
 }
 
-/** A room posted twice: dedupe collapses the second post into the first Offer. */
 function repostedRoom() {
   const h = bootOffers();
   ingestAds(h, { adId: 9000001, warmRent: 450 }, { adId: 9000002, warmRent: 480 });
@@ -296,7 +294,6 @@ describe("a pass over Offers stored before dedupe", () => {
     await h.crawl();
     expect(await offersOf(h)).toHaveLength(1);
 
-    // Back to how a build without dedupe left them: two Offers whose Ad IDs have no profile.
     const { db } = h.runtime;
     const offer = db.select().from(offers).get();
     if (!offer) throw new Error("expected an Offer");
@@ -323,8 +320,8 @@ describe("a pass over Offers stored before dedupe", () => {
     await h.addSearch();
     await h.crawl();
 
-    // Back to how a build before photo keys left it: the photos stored as upload hashes.
     const { db } = h.runtime;
+    // The photos stored as upload hashes.
     const stored = db.select().from(offerAds).where(eqAd("9000001")).get();
     if (!stored?.profile) throw new Error("expected a profile");
     const { format: _, ...older } = JSON.parse(stored.profile) as Record<string, unknown>;

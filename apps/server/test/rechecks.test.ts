@@ -47,7 +47,6 @@ describe("automatic Rechecks", () => {
     await w.crawlUntil(w.clock.now + 3 * DAY + 12 * HOUR);
     expect(w.requestsOf("recheck")).toEqual([]);
 
-    // It is the middle of the night: the next poll is in the morning.
     w.bump(9003001);
     const from = w.clock.now;
     await w.crawlUntil(from + 12 * HOUR);
@@ -272,7 +271,6 @@ describe("the Offer's Recheck state", () => {
     const offer = await w.offerOf(9003000);
     await w.json("POST", `/offers/${offer.id}/recheck`);
     const [job] = w.runtime.db.select().from(crawlJobs).where(eq(crawlJobs.kind, "recheck")).all();
-    // What the engine writes as the request goes out, before any answer.
     w.runtime.db
       .insert(crawlRequests)
       .values({
@@ -424,7 +422,6 @@ describe("a returning Stale Ad ID's re-read", () => {
   it("keeps a press made while its request is out, should a Bot check drop that request", async () => {
     const { w, job } = await returning();
     w.site.failNext.push({ match: /\.9003000\.html$/, status: 429 });
-    // The press arrives after the page's request goes out, before its answer.
     let out = w.runtime.crawl.step();
     for (let i = 0; i < 10 && w.sent.at(-1)?.path !== job?.path; i++) {
       await out;
@@ -524,7 +521,6 @@ describe("a returning Stale Ad ID's re-read", () => {
 
   it("takes over an automatic Recheck that waits for the same page, under the path its card shows now", async () => {
     const w = await settledRooms(9003000, 1);
-    // The page was first fetched under another path than the one its cards show today.
     const fetchedUnder = "/wg-zimmer-in-Teststadt-Nord.9003000.html";
     const listedUnder = "/wg-zimmer-in-Teststadt-Mitte.9003000.html";
     w.runtime.db
@@ -770,7 +766,6 @@ describe("a returning Stale Ad ID's re-read, after a Recheck that read the page 
 
   it("waits out a Recheck that read the page under the path it was stored with, not the card's", async () => {
     const w = await settledRooms(9003000, 1);
-    // No poll gets in the way: the card that asks is the call below.
     await w.json("PATCH", "/searches/1", { pollInterval: { minMinutes: 1440, maxMinutes: 1440 } });
     const storedUnder = "/wg-zimmer-in-Teststadt-Nord.9003000.html";
     w.runtime.db

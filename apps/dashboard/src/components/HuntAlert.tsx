@@ -5,7 +5,6 @@ import { useMutation } from "../mutation.js";
 import { Button } from "../ui/Button.js";
 import { Notice } from "../ui/status.js";
 
-/** The design system keeps buttons out of a Notice, so Resume sits beside it. */
 export function HuntAlert() {
   const { hunt, resume } = useHunt();
   if (hunt?.state !== "needs-you") return null;

@@ -28,10 +28,6 @@ const LABELS: Record<string, string> = {
   "recheck.maxPageAgeHours": "Recheck pages older than",
 };
 
-/**
- * Saved settings that no longer parse, after an upgrade say, until they are saved again. Save only
- * shows after a change, so "Keep these settings" saves them as they are now.
- */
 export function UnreadableSettings({
   state,
   onKeep,

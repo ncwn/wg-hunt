@@ -381,7 +381,6 @@ describe("an unexpected page", () => {
     expect(existsSync(file)).toBe(true);
     expect(gunzipSync(readFileSync(file)).toString()).toBe("<html>neues Layout</html>");
     expect(status.paused.path).toBe("/wg-zimmer-in-Berlin.8.0.1.0.html");
-    // The data folder is where wg-hunt keeps everything private; it is ignored by git.
     expect(readFileSync(join(process.cwd(), ".gitignore"), "utf8")).toMatch(/^\.data$/m);
   });
 });

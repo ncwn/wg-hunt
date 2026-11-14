@@ -603,7 +603,6 @@ export function createBatchAnalysis(deps: {
         runId: request.runId ?? undefined,
       });
     }
-    // Usage that cannot be priced is assumed to be the batch's whole reservation.
     if (missing > 0) ledger.recordUnconfirmed(batch.reservedMicros);
   }
 
@@ -849,7 +848,6 @@ export function createBatchAnalysis(deps: {
         const request = item.stage === 1 ? firstRequest(args) : escalationRequest(args);
         const micros = ledger.estimateMicros(request, { batch: true });
         if (micros === undefined) {
-          // Not in the price table: nothing unpriced is ever sent.
           state.moveItem(item, { to: "failed", kind: "unpriced" });
           progressed = true;
           continue;

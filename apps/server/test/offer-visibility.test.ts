@@ -244,7 +244,6 @@ describe("every hidden cause, with its sub-cause, since-time and what ends it", 
 describe("the Recheck action follows the same rule as automatic Rechecks", () => {
   it("is refused when the Offer is tracked only through an Ad ID other than the one a Recheck would fetch", async () => {
     const { h, id } = await oneOffer();
-    // A newer Ad ID of the same room that no Search lists: it is the current one.
     h.runtime.db
       .insert(offerAds)
       .values({

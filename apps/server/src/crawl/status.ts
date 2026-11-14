@@ -38,7 +38,6 @@ export const CRAWL_HOLDS = [
 ] as const;
 export type CrawlHold = (typeof CRAWL_HOLDS)[number];
 
-/** The problem types `POST /crawl/resume` refuses with. */
 export const RESUME_REFUSALS = ["bot-check-cooldown", "wipe-running"] as const;
 type ResumeRefusal = (typeof RESUME_REFUSALS)[number];
 
@@ -59,7 +58,6 @@ export type WaitReason = (typeof WAIT_REASONS)[number];
 export type BotCheckRecord = {
   /** ISO 8601. */
   at: string;
-  /** Path on the Source, as the request log stores it. */
   path: string;
   marker: BotCheckMarker;
   /** Requests in the hour and in the Berlin day up to and including the one that was checked. */

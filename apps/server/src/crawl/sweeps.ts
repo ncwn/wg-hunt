@@ -34,7 +34,6 @@ const MAX_CONFIRMATIONS_PER_SWEEP = 40;
 type SweepPagePayload = {
   type: "sweep-page";
   searchId: number;
-  /** Which start of the Sweep queued it. */
   generation: number;
   category: Category;
   page: number;
@@ -94,10 +93,6 @@ function coverageChanged(before: string, after: string): boolean {
 
 const toMinutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
 
-/**
- * A new or edited Search sweeps at once rather than next morning; that first Sweep is its
- * backfill.
- */
 export function createSweeps(deps: {
   db: Db;
   engine: Pick<CrawlEngine, "enqueue" | "on" | "onHandlerFailed">;

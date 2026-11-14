@@ -172,10 +172,6 @@ const postRoute = createRoute({
 });
 
 export const registerForecast: ApiModule = (api, { db, crawl, polling }) => {
-  /**
-   * Whether its Source can read it is judged as saving the draft would leave it: the stored Search
-   * it names, with the city the draft gives. A new Search that names no city is taken as readable.
-   */
   function fromDraft(input: z.infer<typeof draftSearchSchema>): ForecastSearch {
     const { city: draftCity, cityId: draftCityId, ...draft } = input;
     const stored =

@@ -53,7 +53,6 @@ export const seenAds = sqliteTable(
     /** The card's "Online" age is rounded down to a unit; null when the card showed none. */
     onlineEarliest: integer({ mode: "timestamp_ms" }),
     onlineLatest: integer({ mode: "timestamp_ms" }),
-    /** The latest card's fields as JSON. */
     card: text().notNull(),
     detailState: text().$type<DetailState>().notNull(),
     /** Failed detail fetches since the fetch was last queued from a card; a success leaves it. */
@@ -151,17 +150,13 @@ export const crawlRequests = sqliteTable(
   (t) => [index("crawl_requests_at").on(t.at)],
 );
 
-/**
- * An Offer is a room, known under one or more Ad IDs (see `offerAds`). Its facts are the
- * rule-parsed ones of its most recently active Ad ID's page.
- */
+/** Its facts are the rule-parsed ones of its most recently active Ad ID's page (see `offerAds`). */
 export const offers = sqliteTable("offers", {
   id: integer().primaryKey({ autoIncrement: true }),
   category: text().$type<Category>().notNull(),
   title: text().notNull(),
   /** `RuleFacts` as JSON. Local database only: they hold the location. */
   facts: text().notNull(),
-  /** The latest search card as JSON. */
   card: text().notNull(),
   rulesVersion: integer().notNull(),
   analysisState: text().$type<"pending" | "analyzed" | "failed">().notNull(),
@@ -288,7 +283,6 @@ export const offerTexts = sqliteTable(
     source: text().$type<Source>().notNull(),
     adId: text().notNull(),
     contentHash: text().notNull(),
-    /** The fetch time of the page. */
     seenAt: integer({ mode: "timestamp_ms" }).notNull(),
     title: text().notNull(),
     /** The free-text sections as JSON: `{ label, text }[]` in page order. */
@@ -387,7 +381,6 @@ export const analysisUsage = sqliteTable(
     cacheWriteTokens: integer().notNull(),
     /** Millionths of a US dollar, rounded up, so sums never drift below what was billed. */
     costMicros: integer().notNull(),
-    /** Informational. */
     runId: integer(),
   },
   (t) => [index("analysis_usage_month").on(t.month)],
@@ -493,7 +486,6 @@ export const analysisItems = sqliteTable(
     state: text().$type<AnalysisItemState>().notNull(),
     /** The Offer's `contentHash` when the item was queued: a result for other words is dropped. */
     contentHash: text().notNull(),
-    /** JSON. */
     plan: text().notNull(),
     /** Stage 2: what the first pass found, until the escalation answers (JSON). */
     carry: text(),
@@ -516,7 +508,6 @@ export const offerFactOverrides = sqliteTable(
     offerId: integer()
       .notNull()
       .references(() => offers.id, { onDelete: "cascade" }),
-    /** Such as `anmeldung` or `baseRent`. */
     fact: text().notNull(),
     /** JSON, as the Offer Facts store it; a list fact holds the list of its items. */
     value: text().notNull(),

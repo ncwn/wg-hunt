@@ -22,7 +22,6 @@ const MIN_POLL_MINUTES_BEFORE_WARNING = 120;
 const toMinutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
 
 export type ForecastSearch = {
-  /** Drafts of new Searches have none. */
   id?: number;
   categories: readonly Category[];
   recencyDays: number;
@@ -71,7 +70,6 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 export function forecastDay(input: {
   searches: readonly ForecastSearch[];
   settings: CrawlSettings;
-  /** Left out, the configured cap applies in full. */
   caps?: Pick<CapsInForce, "daily" | "halfBudgetUntil">;
 }): Forecast {
   const { settings } = input;

@@ -124,7 +124,6 @@ export function startRuntime(
     freeBytes,
     onWipe: () => {
       analysis.batch.interruptRuns();
-      // What the catch-up counted is deleted too.
       catchUp.forget();
     },
     // Held in memory, so it is this start's even when the database would not take it.

@@ -48,7 +48,6 @@ describe("a prune that throws", () => {
     breakPrune(h);
     expect(attempted(h)).toBe(true);
 
-    // The check runs every minute.
     h.clock.now += MINUTE;
     expect(attempted(h)).toBe(false);
     h.clock.now += 14 * MINUTE - 1;
@@ -56,7 +55,6 @@ describe("a prune that throws", () => {
     h.clock.now += 1;
     expect(attempted(h)).toBe(true);
 
-    // The second failure in a row waits half an hour.
     h.clock.now += 30 * MINUTE - 1;
     expect(attempted(h)).toBe(false);
     h.clock.now += 1;

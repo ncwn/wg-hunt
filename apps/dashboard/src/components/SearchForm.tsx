@@ -112,13 +112,11 @@ function changesOf(opened: SearchFields, now: SearchFields): SearchChanges {
   return changes;
 }
 
-/** The server allows one to seven days. */
 const RECENCY = Array.from({ length: 7 }, (_, i) => ({
   value: String(i + 1),
   label: i === 0 ? "Last day" : `Last ${i + 1} days`,
 }));
 
-/** The server's bounds on a wait between polls; the server has the last word on them. */
 const POLL_MINUTES = { min: 15, max: 24 * 60 };
 
 /** The server's bounds on a price ceiling, in euros. */
@@ -143,7 +141,6 @@ function draftOf(values: Values, search: Search | undefined): DraftSearch | unde
   if (values.categories.length === 0) return undefined;
   if (!Number.isInteger(recencyDays) || recencyDays < 1 || recencyDays > 7) return undefined;
   if (!wait(minMinutes) || !wait(maxMinutes) || minMinutes > maxMinutes) return undefined;
-  // The city decides whether the Source can read the Search at all, and so whether it costs anything.
   const { city, cityId } = fieldsOf(values);
   return {
     ...(search && { id: search.id }),
@@ -184,7 +181,6 @@ function sortErrors(errors: { path: string; message: string }[]) {
     // A list's items report as "categories.1": the whole group carries the message.
     const key = FIELD_KEYS.find((k) => path === k || path.startsWith(`${k}.`));
     if (key) byField[key] = [...(byField[key] ?? []), message];
-    // A path names a field, not something the seeker would recognise: the message says enough.
     else general.push(message);
   }
   return { byField, general };

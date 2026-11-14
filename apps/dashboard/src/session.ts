@@ -3,7 +3,6 @@ import { type ApiClient, type SessionWatch, watchSession } from "./api/client.js
 import { ask } from "./api/result.js";
 import type { EventStream, SessionLoss } from "./events.js";
 
-/** `lost`: the session ended under a signed-in page. */
 export type Session =
   | { status: "checking" }
   | { status: "unreachable"; checking: boolean }
@@ -145,7 +144,6 @@ export function useSession(api: ApiClient, events?: EventStream, timing: Session
       if (result.ok) {
         leaving.current = false;
         setSession({ status: "signedIn" });
-        // Pages kept behind the sign-in get their stream back, and read again when it opens.
         events?.reopen();
         return { ok: true };
       }

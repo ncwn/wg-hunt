@@ -16,7 +16,6 @@ function load(): Map<string, LatLng> {
   return centres;
 }
 
-/** From the dataset bundled with wg-hunt (GeoNames, CC BY 4.0); nothing is looked up online. */
 export function plzCentre(plz: string): LatLng | null {
   return load().get(plz) ?? null;
 }

@@ -2,11 +2,9 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname, join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 
-/** Inside the data folder, never in the repository. */
 export const OFFER_PAGES_DIR = "offer-pages";
 
 export type SnapshotStore = {
-  /** Only the latest page of an Ad ID is kept. */
   write(source: string, adId: string, html: string): void;
   read(source: string, adId: string): string | undefined;
   has(source: string, adId: string): boolean;
