@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { offerAds, offerPairOverrides, offers } from "../src/db/schema.js";
-import { nextClocks } from "../src/retention/clocks.js";
+import { offerAds, offerPairOverrides, offers, searchMatches } from "../src/db/schema.js";
+import { mergedClocks, nextClocks } from "../src/retention/clocks.js";
 import { nextScheduledPrune } from "../src/retention/schedule.js";
 import { ingestAds, OTHER_ROOM_TEXT, photo } from "./dedupe-harness.js";
 import { bootOffers, HOUR } from "./offers-harness.js";
@@ -409,7 +409,15 @@ describe("clocks across a merge", () => {
       .run();
 
     await h.json("POST", `/offers/${first}/merge`, { offerId: second });
-    expect(clocksOf(h, first)).toEqual({ quietSince: late, recordClockSince: late });
+    // The "same room" verdict pins the record, which stops its clock; the carry-over is the rule's.
+    expect(clocksOf(h, first)).toEqual({ quietSince: late, recordClockSince: null });
+    expect((await retentionOf(h, first)).keptBecause).toEqual(["pair-override"]);
+    expect(
+      mergedClocks(
+        { quietSince: early, recordClockSince: early },
+        { quietSince: late, recordClockSince: late },
+      ),
+    ).toEqual({ quietSince: late, recordClockSince: late });
   });
 
   it("starts no clock early when either side was not quiet", async () => {
@@ -419,6 +427,16 @@ describe("clocks across a merge", () => {
       .update(offers)
       .set({ quietSince: early, recordClockSince: early })
       .where(eq(offers.id, first))
+      .run();
+    await h.addSearch();
+    h.runtime.db
+      .insert(searchMatches)
+      .values({
+        searchId: 1,
+        source: "wg-gesucht",
+        adId: "9000002",
+        lastSeenAt: new Date(h.clock.now),
+      })
       .run();
     await h.json("POST", `/offers/${first}/merge`, { offerId: second });
     expect(clocksOf(h, first)).toEqual({ quietSince: null, recordClockSince: null });
