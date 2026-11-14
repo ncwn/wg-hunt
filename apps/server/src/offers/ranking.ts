@@ -4,7 +4,6 @@ import {
   combineOfferFacts,
   type FactOverride,
   type HiddenCause,
-  type ModelFacts,
   type OfferFacts,
   overrideFacts,
   type RankableOffer,
@@ -13,6 +12,7 @@ import {
   type RuleFacts,
   type ScamAssessment,
 } from "@wg-hunt/core";
+import { readAnalysis } from "../analysis/record.js";
 import type { OfferAdRow, OfferRow } from "../db/schema.js";
 import type { ScamContext } from "./scam.js";
 import { isOfferStale } from "./staleness.js";
@@ -30,15 +30,17 @@ export type RankingView = {
 
 /** Model facts are absent until a model pass, so Filters on them count as unknown. */
 export function factsOf(
-  row: Pick<OfferRow, "category" | "facts" | "modelFacts">,
+  row: Pick<OfferRow, "category" | "facts"> & Parameters<typeof readAnalysis>[0],
   overrides: readonly FactOverride[],
 ): OfferFacts {
+  const analysis = readAnalysis(row);
   const combined = {
     category: row.category,
     ...combineOfferFacts({
       category: row.category,
       ruleFacts: JSON.parse(row.facts) as RuleFacts,
-      modelFacts: row.modelFacts === null ? undefined : (JSON.parse(row.modelFacts) as ModelFacts),
+      modelFacts:
+        analysis.state === "analyzed" && analysis.facts !== null ? analysis.facts : undefined,
     }),
   } as OfferFacts;
   return overrideFacts(combined, overrides);

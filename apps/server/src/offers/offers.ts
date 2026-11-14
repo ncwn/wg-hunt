@@ -34,8 +34,9 @@ import { keyState } from "../analysis/key.js";
 import {
   type AnalysisFailure,
   type AnalysisRun,
+  analysisColumns,
   type OwedEscalation,
-  parseStoredAnalysis,
+  readAnalysis,
 } from "../analysis/record.js";
 import {
   type AnalysisStatus,
@@ -389,7 +390,7 @@ export function createOffers(deps: {
           : "deleted",
       stale: rankable.stale === true,
       tracked,
-      analysisState: row.analysisState,
+      analysisState: readAnalysis(row).state,
       analysisStatus: statusOf(row, ads, analysisNow),
       marks: { dismissed: row.dismissed, shortlisted: row.shortlisted, contacted: row.contacted },
       distance:
@@ -416,20 +417,36 @@ export function createOffers(deps: {
   }
 
   function analysisView(row: OfferRow, ads: OfferAdRow[]): AnalysisView {
-    const stored = parseStoredAnalysis(row.analysis);
+    const analysis = readAnalysis(row);
     const job = jobOf(row, ads);
     const settings = loadAnalysisSettings(db);
     const current = analysisVersion({ model: settings.model, effort: settings.effort });
-    return {
-      state: row.analysisState,
-      model: stored.run?.model ?? null,
-      effort: stored.run?.effort ?? null,
-      escalation: stored.run?.escalation ?? null,
-      escalated: stored.run?.escalated ?? false,
-      analyzedAt: stored.run?.analyzedAt ?? null,
+    const versions = {
       analysisVersion: job?.analysisVersion ?? null,
       olderVersion: job !== undefined && onOlderAnalysis(job, current),
-      log: stored.run?.log ?? [],
+    };
+    if (analysis.state !== "analyzed") {
+      return {
+        state: analysis.state,
+        model: null,
+        effort: null,
+        escalation: null,
+        escalated: false,
+        analyzedAt: null,
+        ...versions,
+        log: [],
+      };
+    }
+    const { run } = analysis;
+    return {
+      state: analysis.state,
+      model: run.model,
+      effort: run.effort,
+      escalation: run.escalation,
+      escalated: run.escalated,
+      analyzedAt: run.analyzedAt,
+      ...versions,
+      log: run.log,
     };
   }
 
@@ -1139,15 +1156,22 @@ export function createOffers(deps: {
   function endPageFailure(offerId: number): void {
     const row = db.select().from(offers).where(eq(offers.id, offerId)).get();
     if (row === undefined) return;
-    const { failure, ...kept } = parseStoredAnalysis(row.analysis);
-    if (failure === undefined || !isPageFailure(failure.kind)) return;
+    const analysis = readAnalysis(row);
+    if (
+      analysis.state === "pending" ||
+      analysis.failure === null ||
+      !isPageFailure(analysis.failure.kind)
+    ) {
+      return;
+    }
     const ads = adsOf([offerId]).get(offerId) ?? [];
     if (ads.length === 0 || readPage(currentAd(ads), row) === undefined) return;
     db.update(offers)
-      .set({
-        analysisState: row.analysisState === "failed" ? "pending" : row.analysisState,
-        analysis: Object.keys(kept).length > 0 ? JSON.stringify(kept) : null,
-      })
+      .set(
+        analysisColumns(
+          analysis.state === "failed" ? { state: "pending" } : { ...analysis, failure: null },
+        ),
+      )
       .where(eq(offers.id, offerId))
       .run();
     // The status changed and no read follows to say so. Inside a caller's transaction it goes out
@@ -1271,7 +1295,12 @@ export function createOffers(deps: {
 
       const offer = db
         .insert(offers)
-        .values({ ...values, analysisState: "pending", firstSeenAt, createdAt: now })
+        .values({
+          ...values,
+          ...analysisColumns({ state: "pending" }),
+          firstSeenAt,
+          createdAt: now,
+        })
         .returning({ id: offers.id })
         .get();
       db.insert(offerAds)
@@ -1406,43 +1435,43 @@ export function createOffers(deps: {
     });
   }
 
-  function failureOf(row: OfferRow): AnalysisJob["failure"] {
-    const failure = parseStoredAnalysis(row.analysis).failure;
-    if (failure === undefined) return null;
-    return {
-      kind: failure.kind,
-      at: Date.parse(failure.at),
-      attempts: failure.attempts ?? 1,
-      contentHash: failure.contentHash ?? null,
-    };
-  }
-
   function jobOf(row: OfferRow, ads: OfferAdRow[]): AnalysisJob | undefined {
     if (ads.length === 0) return undefined;
     const current = currentAd(ads);
-    const stored = parseStoredAnalysis(row.analysis);
-    const run = stored.run;
-    return {
+    const analysis = readAnalysis(row);
+    const failure = analysis.state === "pending" ? null : analysis.failure;
+    const job: AnalysisJob = {
       id: row.id,
       category: row.category,
       source: current.source,
       adId: current.adId,
       adFirstSeenAt: current.firstSeenAt,
       adCategory: current.category,
-      state: row.analysisState,
+      state: analysis.state,
       stale: isOfferStale(ads, clock()),
-      wordsChanged:
-        row.analysisState === "analyzed" &&
-        current.contentHash !== null &&
-        run?.contentHash !== current.contentHash,
+      wordsChanged: false,
       contentHash: current.contentHash,
       readDepth: readDepth(row, current.contentHash),
       lastBumpAt: current.lastBumpAt?.getTime() ?? null,
-      analysisVersion: run?.analysisVersion ?? null,
-      failure: failureOf(row),
-      ranWith: run ? { model: run.model, effort: run.effort } : null,
-      escalation: stored.escalation ?? null,
+      analysisVersion: null,
+      failure: failure && {
+        kind: failure.kind,
+        at: Date.parse(failure.at),
+        attempts: failure.attempts ?? 1,
+        contentHash: failure.contentHash ?? null,
+      },
+      ranWith: null,
+      escalation: null,
       reanalyzeRequestedAt: row.reanalyzeRequestedAt?.getTime() ?? null,
+    };
+    if (analysis.state !== "analyzed") return job;
+    const { run } = analysis;
+    return {
+      ...job,
+      wordsChanged: current.contentHash !== null && run.contentHash !== current.contentHash,
+      analysisVersion: run.analysisVersion ?? null,
+      ranWith: { model: run.model, effort: run.effort },
+      escalation: analysis.escalation,
     };
   }
 
@@ -1483,13 +1512,11 @@ export function createOffers(deps: {
     id: number,
     facts: ModelFacts,
     run: AnalysisRun,
-    escalation?: OwedEscalation,
+    escalation: OwedEscalation | null = null,
   ): void {
     db.update(offers)
       .set({
-        analysisState: "analyzed",
-        modelFacts: JSON.stringify(facts),
-        analysis: JSON.stringify({ run, ...(escalation && { escalation }) }),
+        ...analysisColumns({ state: "analyzed", facts, run, escalation, failure: null }),
         reanalyzeRequestedAt: null,
         updatedAt: new Date(clock()),
       })
@@ -1502,15 +1529,15 @@ export function createOffers(deps: {
   function noteEscalationResent(id: number): void {
     const row = db.select().from(offers).where(eq(offers.id, id)).get();
     if (row === undefined) return;
-    const stored = parseStoredAnalysis(row.analysis);
-    if (stored.escalation === undefined) return;
+    const analysis = readAnalysis(row);
+    if (analysis.state !== "analyzed" || analysis.escalation === null) return;
     const escalation = {
-      ...stored.escalation,
-      resends: (stored.escalation.resends ?? 0) + 1,
+      ...analysis.escalation,
+      resends: (analysis.escalation.resends ?? 0) + 1,
       resentAt: clock(),
     };
     db.update(offers)
-      .set({ analysis: JSON.stringify({ ...stored, escalation }) })
+      .set(analysisColumns({ ...analysis, escalation }))
       .where(eq(offers.id, id))
       .run();
   }
@@ -1520,10 +1547,11 @@ export function createOffers(deps: {
     if (row === undefined) return;
     const ads = adsOf([id]).get(id) ?? [];
     const hash = ads.length > 0 ? currentAd(ads).contentHash : null;
-    const before = parseStoredAnalysis(row.analysis).failure;
+    const analysis = readAnalysis(row);
+    const before = analysis.state === "pending" ? null : analysis.failure;
     // Attempts in a row on the same words; other words, or a success in between, start over. A
     // kind that doesn't count as an attempt (a refused key, a missing page) leaves the count be.
-    const sameWords = before !== undefined && (before.contentHash ?? hash) === hash;
+    const sameWords = before !== null && (before.contentHash ?? hash) === hash;
     const counted = sameWords ? (before.attempts ?? 1) : 0;
     const failure: AnalysisFailure = {
       kind,
@@ -1533,8 +1561,9 @@ export function createOffers(deps: {
     };
     db.update(offers)
       .set({
-        analysisState: row.analysisState === "analyzed" ? "analyzed" : "failed",
-        analysis: JSON.stringify({ ...parseStoredAnalysis(row.analysis), failure }),
+        ...analysisColumns(
+          analysis.state === "analyzed" ? { ...analysis, failure } : { state: "failed", failure },
+        ),
         reanalyzeRequestedAt: null,
         updatedAt: new Date(clock()),
       })
@@ -1545,7 +1574,7 @@ export function createOffers(deps: {
   /** The Offer's words changed: what was read from the old ones is no longer its facts. */
   function resetAnalysis(id: number): void {
     db.update(offers)
-      .set({ analysisState: "pending", modelFacts: null, analysis: null })
+      .set(analysisColumns({ state: "pending" }))
       .where(eq(offers.id, id))
       .run();
     reband(id);
@@ -1567,7 +1596,7 @@ export function createOffers(deps: {
     for (const row of rows) {
       const own = ads.get(row.id) ?? [];
       if (own.length === 0) continue;
-      counts[row.analysisState]++;
+      counts[readAnalysis(row).state]++;
       const status = statusOf(row, own, now);
       if (status.willRead) counts.awaiting++;
       statuses.push(status);

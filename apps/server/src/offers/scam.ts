@@ -8,7 +8,7 @@ import {
   rentBaselines,
   type ScamAssessment,
 } from "@wg-hunt/core";
-import { eq } from "drizzle-orm";
+import { eq, getTableColumns } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import { type OfferRow, offerAds, offerLinks, offers } from "../db/schema.js";
 import { factsOf } from "./ranking.js";
@@ -28,14 +28,10 @@ export function createScamContext(
   now: number,
   overrides: ReadonlyMap<number, readonly FactOverride[]>,
 ): ScamContext {
+  const { id, category, facts, analysisState, modelFacts, analysis, firstSeenAt } =
+    getTableColumns(offers);
   const everyone = db
-    .select({
-      id: offers.id,
-      category: offers.category,
-      facts: offers.facts,
-      modelFacts: offers.modelFacts,
-      firstSeenAt: offers.firstSeenAt,
-    })
+    .select({ id, category, facts, analysisState, modelFacts, analysis, firstSeenAt })
     .from(offers)
     .all()
     .map((row) => ({ ...row, facts: factsOf(row, overrides.get(row.id) ?? []) }));
