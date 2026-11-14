@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { type AddressInfo, createServer, type Socket } from "node:net";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { PROBLEMS } from "../../server/src/api/problem.js";
 import {
   CRAWL_HOLDS,
@@ -16,7 +17,14 @@ import {
   exitCodeFor,
   exitCodeForStatus,
 } from "../src/problem.js";
-import { cliFor, type Server, serverWith, tempDir } from "./harness.js";
+import {
+  cliFor,
+  collectGarbage,
+  neverAnswers,
+  type Server,
+  serverWith,
+  tempDir,
+} from "./harness.js";
 
 const SKILL = new URL("../../../.claude/skills/wg-hunt/", import.meta.url).pathname;
 const read = (file: string) => readFileSync(join(SKILL, file), "utf8");
@@ -123,11 +131,26 @@ describe("watch outcomes", () => {
 
   it("exit 5, not connection-failed, when --timeout runs out while connecting", async () => {
     const server = await serverWith();
+    setTimeout(collectGarbage, 300);
+    const result = await cliFor(server.runtime, { fetch: neverAnswers })("watch", "--timeout", "1");
+    expect(result.code).toBe(5);
+    expect(JSON.parse(result.stderr)).toMatchObject({ type: "watch-timeout", seen: 0 });
+  });
+
+  it("exit 5 when --timeout runs out while connecting to a real server, through a garbage collection", async () => {
+    const server = await serverWith();
+    const sockets = new Set<Socket>();
+    const silent = createServer((socket) => sockets.add(socket));
+    onTestFinished(() => {
+      for (const socket of sockets) socket.destroy();
+      silent.close();
+    });
+    await new Promise<void>((resolve) => silent.listen(0, "127.0.0.1", resolve));
+    const { port } = silent.address() as AddressInfo;
+    setTimeout(collectGarbage, 300);
     const result = await cliFor(server.runtime, {
-      fetch: (request) =>
-        new Promise((_, reject) =>
-          request.signal.addEventListener("abort", () => reject(request.signal.reason)),
-        ),
+      fetch: (request) => fetch(request),
+      env: { WG_HUNT_URL: `http://127.0.0.1:${port}`, WG_HUNT_TOKEN: server.runtime.token },
     })("watch", "--timeout", "1");
     expect(result.code).toBe(5);
     expect(JSON.parse(result.stderr)).toMatchObject({ type: "watch-timeout", seen: 0 });
@@ -136,14 +159,9 @@ describe("watch outcomes", () => {
   it("exit 0 on Ctrl-C while connecting, without blaming the connection", async () => {
     const server = await serverWith();
     const stop = new AbortController();
-    const watching = cliFor(server.runtime, {
-      signal: stop.signal,
-      fetch: (request) =>
-        new Promise((_, reject) =>
-          request.signal.addEventListener("abort", () => reject(request.signal.reason)),
-        ),
-    })("watch");
+    const watching = cliFor(server.runtime, { signal: stop.signal, fetch: neverAnswers })("watch");
     await new Promise((resolve) => setTimeout(resolve, 50));
+    collectGarbage();
     stop.abort();
     const result = await watching;
     expect(result.code).toBe(0);
